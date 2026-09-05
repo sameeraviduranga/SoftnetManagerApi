@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+	<NuGetAudit>false</NuGetAudit>
+	<WarningsNotAsErrors>NU1900</WarningsNotAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Properties\launchSettings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Properties\launchSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="16.2.0" />
+    <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.10">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Modules\Products\Application\DTOs\" />
+    <Folder Include="Modules\Products\Application\Interfaces\" />
+    <Folder Include="Modules\Products\Application\Services\" />
+    <Folder Include="Modules\Products\Domain\Interfaces\" />
+    <Folder Include="Modules\Products\Infrastructure\Configurations\" />
+    <Folder Include="Modules\Products\Infrastructure\Repositories\" />
+    <Folder Include="Modules\Identity\Infrastructure\Configurations\" />
+    <Folder Include="Modules\Shared\Authentication\" />
+    <Folder Include="Modules\Shared\Common\" />
+    <Folder Include="Modules\Shared\DTOs\" />
+    <Folder Include="Modules\Shared\Exceptions\" />
+    <Folder Include="Modules\Shared\uow\" />
+    <Folder Include="wwwroot\uploads\profileImages\" />
+  </ItemGroup>
+
+</Project>
