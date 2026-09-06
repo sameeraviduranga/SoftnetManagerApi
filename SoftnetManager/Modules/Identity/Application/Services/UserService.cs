@@ -8,6 +8,7 @@ using SoftnetManager.Modules.Identity.Application.Interfaces;
 using SoftnetManager.Modules.Identity.Application.Result;
 using SoftnetManager.Modules.Identity.Domain.Entities;
 using SoftnetManager.Modules.Identity.Domain.Interfaces;
+using SoftnetManager.Modules.Shared.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -22,8 +23,10 @@ namespace SoftnetManager.Modules.Identity.Application.Services
         private readonly IFileStorageService fileStorageService;
         private readonly IMapper mapper;
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly IUnitOfWork unitOfWork;
+        private readonly ICurrentUserService currentUser;
 
-        public UserService(IUserRepository userRepository,ITokenService tokenService,IRefreshTokenRepository refreshTokenRepository,IFileStorageService fileStorageService,IMapper mapper,IHttpContextAccessor httpContextAccessor)
+        public UserService(IUserRepository userRepository,ITokenService tokenService,IRefreshTokenRepository refreshTokenRepository,IFileStorageService fileStorageService,IMapper mapper,IHttpContextAccessor httpContextAccessor,IUnitOfWork unitOfWork,ICurrentUserService currentUser)
         {
             this.userRepository = userRepository;
             this.tokenService = tokenService;
@@ -31,6 +34,8 @@ namespace SoftnetManager.Modules.Identity.Application.Services
             this.fileStorageService = fileStorageService;
             this.mapper = mapper;
             this.httpContextAccessor = httpContextAccessor;
+            this.unitOfWork = unitOfWork;
+            this.currentUser = currentUser;
         }
 
         public async Task<Result<IEnumerable<UserDTO>>> GetUsersAsync()
@@ -154,62 +159,91 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
         public async Task<Result<UserDTO>> RegisterUser(RegisterDTO registerDTO)
         {
-            var emailExists = await userRepository.IsEmailExists(registerDTO.Email);
-            if (emailExists)
+            try
             {
-                return Result<UserDTO>.Fail("Email already registered.");
+                var emailExists = await userRepository.IsEmailExists(registerDTO.Email);
+                if (emailExists)
+                {
+                    return Result<UserDTO>.Fail("Email already registered.");
+                }
+
+                var user = mapper.Map<User>(registerDTO);
+
+                await unitOfWork.BeginTransactionAsync();
+
+                //unitOfWork.Users.CreateUserProfileAsync(user.UserProfile);
+
+                //await userRepository.CreateUserProfileAsync(user.UserProfile);
+
+                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(registerDTO.Password);
+
+                user.Password = hashedPassword;
+                user.UserProfile.CreatedBy = 1;
+
+
+                
+                //unitOfWork.Users.CreateUserAsync(user);
+                await unitOfWork.Users.AddAsync(user);
+
+                var role = await unitOfWork.Users.GetRole("User");
+                if (role == null)
+                {
+                    return Result<UserDTO>.Fail("Role Not Found");
+                }
+                await unitOfWork.Users.AssignRoleAsync(user, role);
+
+                //another solution to save userrole
+                //user.UserRoles.Add(new UserRole
+                //{
+                //    User = user,
+                //    Role = role
+                //});
+
+                
+
+                await unitOfWork.CommitTransactionAsync();//commit transaction
+
+                var userDto = mapper.Map<UserDTO>(user);
+                //need mapping
+                return Result<UserDTO>.Success(userDto);
             }
-
-            //var userProfile = new UserProfile
-            //{
-            //    FirstName = registerDTO.Firstname,
-            //    LastName = registerDTO.Lastname,
-            //    IsActive = true,
-            //    CreatedBy = 1,
-            //    CreatedAt = DateTime.UtcNow
-            //};
-
-            var user = mapper.Map<User>(registerDTO);
-
-            await userRepository.CreateUserProfileAsync(user.UserProfile);
-
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(registerDTO.Password);
-
-            user.Password = hashedPassword;
-            user.UserProfile.CreatedBy = 1;
-
-            await userRepository.CreateUserAsync(user);
-
-            var role = await userRepository.GetRole("User");
-            if (role == null)
+            catch (Exception ex)
             {
-                return Result<UserDTO>.Fail("Role Not Found");
+                await unitOfWork.RollbackTransactionAsync();
+                return Result<UserDTO>.Fail(ex.Message);
             }
-            await userRepository.AssignRoleAsync(user, role);
-
-            var userDto = mapper.Map<UserDTO>(user);
-            //need mapping
-            return Result<UserDTO>.Success(userDto);
 
 
         }
 
         public async Task<Result<bool>> ToggleUserActiveStatusAsync(ToggleActiveStatusDTO toggleActiveStatusDTO)
         {
-            var userId = httpContextAccessor.HttpContext?.User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var existingUser = await userRepository.GetUserByIdAsync(toggleActiveStatusDTO.UserId);
-            var currentUserId = int.Parse(userId ?? "0");
-
-            if (existingUser == null || existingUser.UserProfile == null)
+            try
             {
-                return Result<bool>.Fail("User not found");
-            }
-            existingUser.UserProfile.IsActive = toggleActiveStatusDTO.IsActive;
-            existingUser.UserProfile.UpdatedBy = 1;
-            existingUser.UserProfile.UpdatedAt = DateTime.UtcNow;
+                var userId = currentUser.UserID;
 
-            await userRepository.UpdateUserAsync(existingUser);
-            return Result<bool>.Success(true);
+                await unitOfWork.BeginTransactionAsync();
+                var existingUser = await userRepository.GetUserByIdAsync(toggleActiveStatusDTO.UserId);
+
+
+                if (existingUser == null || existingUser.UserProfile == null)
+                {
+                    return Result<bool>.Fail("User not found");
+                }
+                
+
+                existingUser.UserProfile.IsActive = toggleActiveStatusDTO.IsActive;
+                existingUser.UserProfile.UpdatedBy = 1;//replace with userId from current 
+                existingUser.UserProfile.UpdatedAt = DateTime.UtcNow;
+
+                userRepository.UpdateUserAsync(existingUser);
+                return Result<bool>.Success(true);
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
 
         //=======================================================toggle user 
@@ -288,11 +322,13 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
             mapper.Map(userProfileDto, existingUser.UserProfile);
 
-            var isUpdate = await userRepository.UpdateUserAsync(existingUser);
-            if (!isUpdate)
-            {
-                return Result<UserDTO>.Fail("Failed to update user.");
-            }
+            userRepository.UpdateUserAsync(existingUser);
+
+            
+            //if (!isUpdate)
+            //{
+            //    return Result<UserDTO>.Fail("Failed to update user.");
+            //}
             
             var userDto = mapper.Map<UserDTO>(existingUser);
 
@@ -364,7 +400,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
             //map
             
-            await userRepository.CreateUserAsync(user);
+            userRepository.CreateUserAsync(user);
 
             //need save profile
 

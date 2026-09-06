@@ -7,10 +7,10 @@ using SoftnetManager.Modules.Shared.Repositories;
 namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
 {
 
-    public class UserRespository : GenericRepository<User>, IUserRepository
+    public class UserRepository : GenericRepository<User>, IUserRepository
     {
         private readonly AppDbContext _context;
-        public UserRespository(AppDbContext context) : base(context)
+        public UserRepository(AppDbContext context) : base(context)
         {
             _context = context;
         }
@@ -24,26 +24,26 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
         {
             var userRole = new UserRole
             {
-                UserID = user.ID,
+                User = user,
                 RoleID = role.Id,
             };
 
             _context.UserRoles.Add(userRole);
-            await _context.SaveChangesAsync();
+           // await _context.SaveChangesAsync();
 
         }
 
-        public async Task CreateUserAsync(User user)
+        public void CreateUserAsync(User user)
         {
             _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+           // await _context.SaveChangesAsync();
             
         }
 
-        public async Task CreateUserProfileAsync(UserProfile userProfile)
+        public void CreateUserProfileAsync(UserProfile userProfile)
         {
             _context.UserProfiles.Add(userProfile);
-            await _context.SaveChangesAsync();
+            //await _context.SaveChangesAsync();
             
             
         }
@@ -90,11 +90,11 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
             return await _context.Users.AnyAsync(u=>u.UserProfile.Nic == nic && u.ID != user.ID);
         }
 
-        public async Task<bool> UpdateUserAsync(User existingUser)
+        public void UpdateUserAsync(User existingUser)
         {
             _context.Users.Update(existingUser);
-            await _context.SaveChangesAsync();
-            return true;
+            //await _context.SaveChangesAsync();
+            //return true;
         }
 
         public async Task<bool> IsSalutationExists(int? salutationId)
@@ -172,7 +172,7 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
         public async Task AssignUserRoleAsync(UserRole userRole)
         {
             await _context.UserRoles.AddAsync(userRole);
-            await _context.SaveChangesAsync();
+            //await _context.SaveChangesAsync();
         }
 
         public async Task<bool> IsNicExists(string Nic)

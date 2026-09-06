@@ -9,8 +9,11 @@ using SoftnetManager.Modules.Identity.Application.MappingProfiles;
 using SoftnetManager.Modules.Identity.Application.Services;
 using SoftnetManager.Modules.Identity.Domain.Interfaces;
 using SoftnetManager.Modules.Identity.Infrastructure.Repositories;
+using SoftnetManager.Modules.Identity.Infrastructure.Services;
 using SoftnetManager.Modules.Shared.Authorization;
 using SoftnetManager.Modules.Shared.Database;
+using SoftnetManager.Modules.Shared.Interfaces;
+using SoftnetManager.Modules.Shared.Repositories;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -78,12 +81,15 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider,PermissionPolicyProvider>();
-builder.Services.AddScoped<IUserRepository,UserRespository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped(typeof(IRepository<>), typeof(GenericRepository<>));
+builder.Services.AddScoped<IUserRepository,UserRepository>();
 builder.Services.AddScoped<IUserService,UserService>();
 builder.Services.AddScoped<ITokenService,Tokenservice>();
 builder.Services.AddScoped<IRefreshTokenRepository,RefreshTokenRepository>();
 builder.Services.AddScoped<IFileStorageService,FileStorageService>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 
 //add policies

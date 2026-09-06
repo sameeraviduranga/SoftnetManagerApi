@@ -15,9 +15,10 @@ namespace SoftnetManager.Modules.Identity.Domain.Interfaces
 
 
 
-        Task CreateUserProfileAsync(UserProfile userProfile);
-        Task CreateUserAsync(User user);
+        void CreateUserProfileAsync(UserProfile userProfile);
+        void CreateUserAsync(User user);
         Task AssignRoleAsync(User user, Role role);
+        void UpdateUserAsync(User existingUser);
 
         Task<Role?> GetRole(string roleName);
         Task AssignUserRoleAsync(UserRole userRole);
@@ -30,7 +31,7 @@ namespace SoftnetManager.Modules.Identity.Domain.Interfaces
 
         Task<bool> CheckRegisteredEmail(User user,string email);
         Task<bool> CheckRegisteredNic(User user,string nic);
-        Task<bool> UpdateUserAsync(User existingUser);
+        
 
         Task<bool> IsSalutationExists(int? salutationId);
         Task<bool> IsGenderExists(int? genderId);

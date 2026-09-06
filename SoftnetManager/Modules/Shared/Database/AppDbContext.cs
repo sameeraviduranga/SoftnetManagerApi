@@ -19,6 +19,12 @@ namespace SoftnetManager.Modules.Shared.Database
                .HasIndex(u => u.Email)
                .IsUnique();
 
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.UserProfile)
+                .WithOne()
+                .HasForeignKey<User>(u => u.UserProfileID)
+                .OnDelete(DeleteBehavior.Restrict);
+
             modelBuilder.Entity<UserProfile>()
                 .HasIndex(u => u.Nic)
                 .IsUnique()

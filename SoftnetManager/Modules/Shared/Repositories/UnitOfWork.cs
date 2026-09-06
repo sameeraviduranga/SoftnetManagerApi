@@ -13,20 +13,20 @@ namespace SoftnetManager.Modules.Shared.Repositories
         private readonly AppDbContext context;
         private IDbContextTransaction? _transaction;// Define repositories for each entity
 
-        public IUserRepository Users;
+        public IUserRepository Users { get; }
         
 
         public UnitOfWork(AppDbContext context)
         {
             this.context = context;
 
-            Users = new UserRespository(context);
+            Users = new UserRepository(context);
             
            
             
         }
 
-        IUserRepository IUnitOfWork.Users => throw new NotImplementedException();
+        //IUserRepository IUnitOfWork.Users => throw new NotImplementedException();
 
         public async Task<IDbContextTransaction> BeginTransactionAsync()
         {
@@ -44,7 +44,7 @@ namespace SoftnetManager.Modules.Shared.Repositories
 
             await context.SaveChangesAsync();
             await _transaction.CommitAsync();
-
+            await DisposeTransactionAsync();
         }
 
         public void Dispose()
