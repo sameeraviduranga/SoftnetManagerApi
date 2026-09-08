@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using softnetmanager.modules.identity.application.services;
-using SoftnetManager.Modules.Identity.Application.DTOs;
+using SoftnetManager.Modules.Identity.Application.DTOs.LoginAndRegister;
+using SoftnetManager.Modules.Identity.Application.DTOs.User;
+using SoftnetManager.Modules.Identity.Application.DTOs.UserProfile;
 using SoftnetManager.Modules.Identity.Application.Interfaces;
 using SoftnetManager.Modules.Identity.Application.Result;
 using SoftnetManager.Modules.Identity.Domain.Entities;
@@ -223,7 +225,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
                 var userId = currentUser.UserID;
 
                 await unitOfWork.BeginTransactionAsync();
-                var existingUser = await userRepository.GetUserByIdAsync(toggleActiveStatusDTO.UserId);
+                var existingUser = await unitOfWork.Users.GetUserByIdAsync(toggleActiveStatusDTO.UserId);
 
 
                 if (existingUser == null || existingUser.UserProfile == null)
@@ -236,13 +238,14 @@ namespace SoftnetManager.Modules.Identity.Application.Services
                 existingUser.UserProfile.UpdatedBy = 1;//replace with userId from current 
                 existingUser.UserProfile.UpdatedAt = DateTime.UtcNow;
 
-                userRepository.UpdateUserAsync(existingUser);
+                unitOfWork.Users.Update(existingUser);
+                await unitOfWork.CommitTransactionAsync();
                 return Result<bool>.Success(true);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                await unitOfWork.RollbackTransactionAsync();
+                return Result<bool>.Fail(ex.Message);
             }
         }
 
@@ -337,92 +340,221 @@ namespace SoftnetManager.Modules.Identity.Application.Services
         }
 
 
-
-        public async Task<Result<UserDTO>> CreateUser(CreateUserDTO userDTO)
+        public async Task<Result<UserDTO>> UpdateUserProfileAsync(int userId,JsonPatchDocument<UpdateProfileDTO> patchDocument)
         {
-            if (userDTO == null || userDTO.ProfileDTO == null)
+            var curretUserId = currentUser.UserID;
+            try
             {
-                return Result<UserDTO>.Fail("Not valid dto");
-            }
+                await unitOfWork.BeginTransactionAsync();
 
-            ValidationContext validationContext = new ValidationContext(userDTO);
-            List<ValidationResult> validationResults = new List<ValidationResult>();
-
-            if (!Validator.TryValidateObject(userDTO, validationContext, validationResults, true))
-            {
-                return Result<UserDTO>.Fail(string.Join(",", validationResults.Select(x => x.ErrorMessage)));
-            }
-
-            if (await userRepository.IsEmailExists(userDTO.Email))
-            {
-                return Result<UserDTO>.Fail("Email aleady registerd.");
-            }
-
-            if (await userRepository.IsNicExists(userDTO.ProfileDTO.Nic))
-            {
-                return Result<UserDTO>.Fail("Nic aleady registerd.");
-            }
-
-            if (!await userRepository.IsSalutationExists(userDTO.ProfileDTO.SalutationID))
-            {
-                return Result<UserDTO>.Fail("Salutation doesn't exists");
-            }
-
-            if (!await userRepository.IsGenderExists(userDTO.ProfileDTO.GenderID))
-            {
-                return Result<UserDTO>.Fail("Gender doesn't exists");
-            }
-
-            if (!await userRepository.IsBranchExists(userDTO.ProfileDTO.BranchID))
-            {
-                return Result<UserDTO>.Fail("Branch doesn't exists");
-            }
-
-            if (!await userRepository.IsDesignationExists(userDTO.ProfileDTO.DesignationID))
-            {
-                return Result<UserDTO>.Fail("Designation doesn't exists");
-            }
-
-            
-
-            var user = mapper.Map<User>(userDTO);
-
-            if (userDTO.ProfileDTO.UserPhoto != null)
-            {
-                var profileImageurl = await fileStorageService.UploadProfileImageAsync(userDTO.ProfileDTO.UserPhoto);
-                user.UserProfile.ProfileImageUrl = profileImageurl;
-            }
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(userDTO.Password);
-            user.Password = hashedPassword;
-            user.UserProfile.IsActive = true;
-            user.UserProfile.CreatedBy = 1;
-            user.UserProfile.CreatedAt = DateTime.UtcNow;
-
-            //map
-            
-            userRepository.CreateUserAsync(user);
-
-            //need save profile
-
-            //asignRole
-
-            foreach (var role in userDTO.roles)
-            {
-                if (await userRepository.IsRoleExists(role))
+                var existingUser = await unitOfWork.Users.GetUserByIdAsync(userId);
+                if (existingUser == null || existingUser.UserProfile == null)
                 {
+                    return Result<UserDTO>.Fail("User not found");
+                }
 
-                    var newUserRole = new UserRole { UserID = user.ID, RoleID = role };
-                    await userRepository.AssignUserRoleAsync(newUserRole);
+                var userProfleDto = mapper.Map<UpdateProfileDTO>(existingUser.UserProfile);
+
+                //validation
+                foreach (var operation in patchDocument.Operations)
+                {
+                    if (operation.path.Equals("/SalutationID",StringComparison.OrdinalIgnoreCase) && operation.value != null)
+                    {
+                        var salutationId = Convert.ToInt32(operation.value);
+
+                        if (!await userRepository.IsSalutationExists(salutationId))
+                        {
+                            return Result<UserDTO>.Fail("Salution not exists.");
+                        }
+                    }
+
+                    if (operation.path.Equals("/GenderID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
+                    {
+                        int genderID = Convert.ToInt32(operation.value);
+                        if (!await userRepository.IsGenderExists(genderID))
+                        {
+                            return Result<UserDTO>.Fail("Gender not exists.");
+                        }
+                    }
+                    if (operation.path.Equals("/MaritialStatusID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
+                    {
+                        int maritialStatusID = Convert.ToInt32(operation.value);
+                        if (!await userRepository.IsMaritialStatusExists(maritialStatusID))
+                        {
+                            return Result<UserDTO>.Fail("MaritialStatus not exists.");
+                        }
+                    }
+                    if (operation.path.Equals("/BranchID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
+                    {
+                        int branchID = Convert.ToInt32(operation.value);
+                        if (!await userRepository.IsBranchExists(branchID))
+                        {
+                            return Result<UserDTO>.Fail("Branch not exists.");
+                        }
+                    }
+                    if (operation.path.Equals("/DesignationID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
+                    {
+                        int designationID = Convert.ToInt32(operation.value);
+                        if (!await userRepository.IsDesignationExists(designationID))
+                        {
+                            return Result<UserDTO>.Fail("designation not exists.");
+                        }
+                    }
 
                 }
 
+                //apply patch
+                patchDocument.ApplyTo(userProfleDto);
+
+                //validate dto
+
+                ValidationContext validationContext = new ValidationContext(userProfleDto);
+                List<ValidationResult> validationResults = new List<ValidationResult>();
+
+                if (!Validator.TryValidateObject(userProfleDto, validationContext, validationResults, true))
+                {
+                    return Result<UserDTO>.Fail(string.Join(",", validationResults.Select(x => x.ErrorMessage)));
+                }
+
+                //map back to entity
+                mapper.Map(userProfleDto, existingUser.UserProfile);
+
+                existingUser.UserProfile.UpdatedBy = 1;//replace with current user id
+                existingUser.UserProfile.UpdatedAt = DateTime.UtcNow;
+
+                unitOfWork.Users.Update(existingUser);
+
+                await unitOfWork.CommitTransactionAsync();
+
+                var userDto = mapper.Map<UserDTO>(existingUser);
+
+                return Result<UserDTO>.Success(userDto);
+
+
             }
+            catch (Exception ex)
+            {
 
-            var newUser = await userRepository.GetUserByIdAsync(user.ID);
+                if (unitOfWork.HasActiveTransaction)
+                {
+                    await unitOfWork.RollbackTransactionAsync(); 
+                }
+                return Result<UserDTO>.Fail(ex.Message);
+            }
+        }
 
-            var createdUserDto = mapper.Map<UserDTO>(newUser);
 
-            return Result<UserDTO>.Success(createdUserDto);
+
+        public async Task<Result<UserDTO>> CreateUser(CreateUserDTO userDTO)
+        {
+            string uploadedImagePath = string.Empty;
+            try
+            {
+                if (userDTO == null || userDTO.ProfileDTO == null)
+                {
+                    return Result<UserDTO>.Fail("Not valid dto");
+                }
+
+                ValidationContext validationContext = new ValidationContext(userDTO);
+                List<ValidationResult> validationResults = new List<ValidationResult>();
+
+                if (!Validator.TryValidateObject(userDTO, validationContext, validationResults, true))
+                {
+                    return Result<UserDTO>.Fail(string.Join(",", validationResults.Select(x => x.ErrorMessage)));
+                }
+
+                if (await userRepository.IsEmailExists(userDTO.Email))
+                {
+                    return Result<UserDTO>.Fail("Email aleady registerd.");
+                }
+
+                if (await userRepository.IsNicExists(userDTO.ProfileDTO.Nic))
+                {
+                    return Result<UserDTO>.Fail("Nic aleady registerd.");
+                }
+
+                if (!await userRepository.IsSalutationExists(userDTO.ProfileDTO.SalutationID))
+                {
+                    return Result<UserDTO>.Fail("Salutation doesn't exists");
+                }
+
+                if (!await userRepository.IsGenderExists(userDTO.ProfileDTO.GenderID))
+                {
+                    return Result<UserDTO>.Fail("Gender doesn't exists");
+                }
+
+                if (!await userRepository.IsBranchExists(userDTO.ProfileDTO.BranchID))
+                {
+                    return Result<UserDTO>.Fail("Branch doesn't exists");
+                }
+
+                if (!await userRepository.IsDesignationExists(userDTO.ProfileDTO.DesignationID))
+                {
+                    return Result<UserDTO>.Fail("Designation doesn't exists");
+                }
+
+
+
+                var user = mapper.Map<User>(userDTO);
+
+                if (userDTO.ProfileDTO.UserPhoto != null)
+                {
+                    uploadedImagePath = await fileStorageService.UploadProfileImageAsync(userDTO.ProfileDTO.UserPhoto);
+                    user.UserProfile.ProfileImageUrl = uploadedImagePath;
+                }
+                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(userDTO.Password);
+                user.Password = hashedPassword;
+                user.UserProfile.CreatedBy = 1;
+                user.UserProfile.CreatedAt = DateTime.UtcNow;
+
+                //map
+                await unitOfWork.BeginTransactionAsync();
+
+
+                unitOfWork.Users.CreateUser(user);
+
+                //need save profile
+
+                //asignRole
+
+                var distinctRoles = userDTO.roles.Distinct().ToList();
+                foreach (var role in distinctRoles)
+                {
+                    if (!await userRepository.IsRoleExists(role))
+                    {
+                        return Result<UserDTO>.Fail($"Role '{role}' does not exist.");
+                    }
+                }
+
+                foreach (var role in distinctRoles)
+                {
+                    
+                     user.UserRoles.Add(new UserRole {RoleID = role });
+
+                }
+                
+
+                await unitOfWork.CommitTransactionAsync();
+
+                var newUser = await userRepository.GetUserByIdAsync(user.ID);
+
+                var createdUserDto = mapper.Map<UserDTO>(newUser);
+
+                return Result<UserDTO>.Success(createdUserDto);
+            }
+            catch (Exception ex)
+            {
+                if (unitOfWork.HasActiveTransaction)
+                {
+                    await unitOfWork.RollbackTransactionAsync();
+                }
+
+                if (!string.IsNullOrEmpty(uploadedImagePath))
+                {
+                    await fileStorageService.DeleteProfileImageAsync(uploadedImagePath);
+                }
+                return Result<UserDTO>.Fail(ex.Message);
+            }
 
         }
 

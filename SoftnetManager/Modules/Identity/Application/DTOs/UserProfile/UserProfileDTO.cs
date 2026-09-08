@@ -1,4 +1,6 @@
-﻿namespace SoftnetManager.Modules.Identity.Application.DTOs
+﻿using SoftnetManager.Modules.Identity.Application.DTOs.Address;
+
+namespace SoftnetManager.Modules.Identity.Application.DTOs.UserProfile
 {
     public class UserProfileDTO
     {

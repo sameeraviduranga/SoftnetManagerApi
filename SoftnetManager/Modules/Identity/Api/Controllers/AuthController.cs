@@ -6,11 +6,11 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using SoftnetManager.Modules.Shared.Database;
-using SoftnetManager.Modules.Identity.Application.DTOs;
 using SoftnetManager.Modules.Identity.Domain.Entities;
 using SoftnetManager.Modules.Identity.Application.Interfaces;
 using SoftnetManager.Modules.Identity.Api.Response;
 using SoftnetManager.Modules.Identity.Application.Result;
+using SoftnetManager.Modules.Identity.Application.DTOs.LoginAndRegister;
 
 
 namespace SoftnetManager.Modules.Identity.Api.Controllers

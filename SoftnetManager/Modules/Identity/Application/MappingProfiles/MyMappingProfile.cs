@@ -1,5 +1,8 @@
 ﻿using AutoMapper;
-using SoftnetManager.Modules.Identity.Application.DTOs;
+using SoftnetManager.Modules.Identity.Application.DTOs.Address;
+using SoftnetManager.Modules.Identity.Application.DTOs.LoginAndRegister;
+using SoftnetManager.Modules.Identity.Application.DTOs.User;
+using SoftnetManager.Modules.Identity.Application.DTOs.UserProfile;
 using SoftnetManager.Modules.Identity.Application.Interfaces;
 using SoftnetManager.Modules.Identity.Domain.Entities;
 
@@ -20,7 +23,7 @@ namespace SoftnetManager.Modules.Identity.Application.MappingProfiles
 
             CreateMap<User, UserDTO>()
                 .ForMember(dest=>dest.UserProfile,opt=>opt.MapFrom(src=>src.UserProfile))
-                .ForMember(dest=>dest.UserRoles, opt => opt.MapFrom(dest=>dest.UserRoles.Select(ur=>ur.Role.Name).ToList()));
+                .ForMember(dest=>dest.UserRoles, opt => opt.MapFrom(src=>src.UserRoles != null?src.UserRoles.Where(ur=>ur.Role != null).Select(ur=>ur.Role.Name).ToList():new List<string>()));
 
             CreateMap<User, UserProfileDTO>();
 
@@ -44,11 +47,14 @@ namespace SoftnetManager.Modules.Identity.Application.MappingProfiles
 
 
             CreateMap<UpdateProfileDTO, UserProfile>()
-                .ReverseMap();
+                .ForMember(dest=>dest.Address,opt=>opt.MapFrom(src => src.Address))
+                .ReverseMap()
+                .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Address));
 
             //creatMap to  address
 
-            CreateMap<CreateAddressDTO,Address>();
+            CreateMap<CreateAddressDTO, Address>()
+                .ReverseMap();
 
 
             //create user

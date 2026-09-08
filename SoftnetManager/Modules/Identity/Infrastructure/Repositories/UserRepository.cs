@@ -33,7 +33,7 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
 
         }
 
-        public void CreateUserAsync(User user)
+        public void CreateUser(User user)
         {
             _context.Users.Add(user);
            // await _context.SaveChangesAsync();
@@ -150,6 +150,7 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
         public async Task<User?> GetUserByIdAsync(int id)
         {
             return await _context.Users
+
                 .Include(u => u.UserProfile)
                     .ThenInclude(up => up.Salutation)
                 .Include(u => u.UserProfile)
@@ -184,5 +185,9 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
         {
             return await _context.Roles.AnyAsync(r=>r.Id == roleId);
         }
+
+        
+
+        
     }
 }

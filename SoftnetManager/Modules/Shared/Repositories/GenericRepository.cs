@@ -45,7 +45,7 @@ namespace SoftnetManager.Modules.Shared.Repositories
             return await _dbset.FirstOrDefaultAsync(e => EF.Property<string>(e, "Name") == name);
         }
 
-        public async Task SaveAsync()
+        public async Task SaveAsync()//not used in this project, but can be used in other projects that use this generic repository
         {
             await _dbContext.SaveChangesAsync();
         }

@@ -7,7 +7,9 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SoftnetManager.Modules.Identity.Api.Response;
-using SoftnetManager.Modules.Identity.Application.DTOs;
+using SoftnetManager.Modules.Identity.Application.DTOs.LoginAndRegister;
+using SoftnetManager.Modules.Identity.Application.DTOs.User;
+using SoftnetManager.Modules.Identity.Application.DTOs.UserProfile;
 using SoftnetManager.Modules.Identity.Application.Interfaces;
 using SoftnetManager.Modules.Identity.Domain.Entities;
 using SoftnetManager.Modules.Shared.Database;
@@ -86,13 +88,21 @@ namespace SoftnetManager.Modules.Identity.Api.Controllers
         //}
 
         
-        [HttpPatch("updateProfile")]
-        public async Task<IActionResult> UpdateProfile([FromBody]JsonPatchDocument<UpdateProfileDTO>patchDocument)
+        [HttpPatch("updateProfile/{userId}")]
+        public async Task<IActionResult> UpdateProfile(int userId, [FromBody]JsonPatchDocument<UpdateProfileDTO>patchDocument)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail(ModelState,"Invalid Request body"));
             }
+
+            var result = await userService.UpdateUserProfileAsync(userId, patchDocument);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(ApiResponse<object>.Fail(result.Error!, "User not updated"));
+            }
+
 
             //var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             //var emailClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email);
@@ -113,15 +123,8 @@ namespace SoftnetManager.Modules.Identity.Api.Controllers
             //}
 
             //var userId = Convert.ToInt32(userIdClaim.Value);
-
-            var result =  await userService.UpdateUser(1, patchDocument);
-
-            if (!result.IsSuccess)
-            {
-                return BadRequest(ApiResponse<UserDTO>.Fail(result.Data!, result.Error!));
-            }
-
-            return Ok(ApiResponse<UserDTO>.Success(result.Data!, "User Updated successfully"));
+            return Ok(ApiResponse<object>.Success(result.Data, "User profile updated successfully"));
+            
         
         }
 
@@ -154,7 +157,7 @@ namespace SoftnetManager.Modules.Identity.Api.Controllers
             {
                 return BadRequest(ApiResponse<object>.Fail(result.Error!, "User not created"));
             }
-            return Ok(ApiResponse<object>.Success(result.Data!, "User created successfully"));
+            return Ok(ApiResponse<UserDTO>.Success(result.Data!, "User created successfully"));
         }
 
     }

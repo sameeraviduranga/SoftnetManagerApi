@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SoftnetManager.Modules.Identity.Application.DTOs
+namespace SoftnetManager.Modules.Identity.Application.DTOs.UserProfile
 {
     public class ToggleActiveStatusDTO
     {

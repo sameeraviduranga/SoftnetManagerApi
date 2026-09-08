@@ -11,6 +11,16 @@ namespace SoftnetManager.Modules.Identity.Application.Services
         {
             this.hostEnvironment = hostEnvironment;
         }
+
+        public async Task DeleteProfileImageAsync(string imagePath)
+        {
+            string fullPath = Path.Combine(hostEnvironment.WebRootPath, "uploads", "profileImages", imagePath);
+            if (File.Exists(fullPath))
+            {
+                File.Delete(fullPath);
+            }
+        }
+
         public async Task<string> UploadProfileImageAsync(IFormFile file)
         {
             string uploadFolder = Path.Combine(hostEnvironment.WebRootPath, "uploads", "profileImages");

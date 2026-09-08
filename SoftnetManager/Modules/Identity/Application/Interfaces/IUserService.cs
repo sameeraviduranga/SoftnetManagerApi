@@ -1,6 +1,8 @@
 ﻿using Azure;
 using Microsoft.AspNetCore.JsonPatch;
-using SoftnetManager.Modules.Identity.Application.DTOs;
+using SoftnetManager.Modules.Identity.Application.DTOs.LoginAndRegister;
+using SoftnetManager.Modules.Identity.Application.DTOs.User;
+using SoftnetManager.Modules.Identity.Application.DTOs.UserProfile;
 using SoftnetManager.Modules.Identity.Application.Result;
 
 namespace SoftnetManager.Modules.Identity.Application.Interfaces
@@ -13,6 +15,7 @@ namespace SoftnetManager.Modules.Identity.Application.Interfaces
         Task<Result<UserDTO>> RegisterUser(RegisterDTO registerDTO);
         Task<Result<UserDTO>> CreateUser(CreateUserDTO userDTO);
         Task<Result<UserDTO>> UpdateUser(int userId, JsonPatchDocument<UpdateProfileDTO>patchDocument);
+        Task<Result<UserDTO>> UpdateUserProfileAsync(int userId, JsonPatchDocument<UpdateProfileDTO> patchDocument);
 
         Task<Result<IEnumerable<UserDTO>>> GetUsersAsync();
 

@@ -3,5 +3,6 @@
     public interface IFileStorageService
     {
         Task<string> UploadProfileImageAsync(IFormFile file);
+        Task DeleteProfileImageAsync(string imagePath);
     }
 }

@@ -1,6 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using SoftnetManager.Modules.Identity.Application.DTOs.Address;
+using System.ComponentModel.DataAnnotations;
 
-namespace SoftnetManager.Modules.Identity.Application.DTOs
+namespace SoftnetManager.Modules.Identity.Application.DTOs.UserProfile
 {
     public class CreateUserProfileDTO
     {

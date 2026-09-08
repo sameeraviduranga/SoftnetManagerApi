@@ -1,6 +1,7 @@
-﻿using SoftnetManager.Modules.Identity.Domain.Entities;
+﻿using SoftnetManager.Modules.Identity.Application.DTOs.UserProfile;
+using SoftnetManager.Modules.Identity.Domain.Entities;
 
-namespace SoftnetManager.Modules.Identity.Application.DTOs
+namespace SoftnetManager.Modules.Identity.Application.DTOs.User
 {
     public class UserDTO
     {

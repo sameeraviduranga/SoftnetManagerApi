@@ -1,4 +1,4 @@
-﻿namespace SoftnetManager.Modules.Identity.Application.DTOs
+﻿namespace SoftnetManager.Modules.Identity.Application.DTOs.Address
 {
     public class AddressDTO
     {

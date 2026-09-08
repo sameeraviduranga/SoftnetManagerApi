@@ -10,7 +10,7 @@ namespace SoftnetManager.Modules.Shared.Interfaces
         //Iproductrepository Products { get; }
         //Icustomerrepository Customers { get; }
 
-
+        bool HasActiveTransaction { get; }
         int SaveChanges();
         Task<int> SaveChangesAsync();
         Task<IDbContextTransaction> BeginTransactionAsync();

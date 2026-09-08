@@ -25,7 +25,7 @@ namespace SoftnetManager.Modules.Shared.Repositories
            
             
         }
-
+        public bool HasActiveTransaction =>_transaction != null;
         //IUserRepository IUnitOfWork.Users => throw new NotImplementedException();
 
         public async Task<IDbContextTransaction> BeginTransactionAsync()
