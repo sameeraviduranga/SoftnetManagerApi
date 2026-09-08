@@ -89,14 +89,14 @@ namespace SoftnetManager.Modules.Identity.Api.Controllers
 
         
         [HttpPatch("updateProfile/{userId}")]
-        public async Task<IActionResult> UpdateProfile(int userId, [FromBody]JsonPatchDocument<UpdateProfileDTO>patchDocument)
+        public async Task<IActionResult> UpdateProfile(int userId, [FromForm]UpdateProfileDTO updateProfileDTO)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail(ModelState,"Invalid Request body"));
             }
 
-            var result = await userService.UpdateUserProfileAsync(userId, patchDocument);
+            var result = await userService.UpdateUserProfileAsync(userId, updateProfileDTO);
 
             if (!result.IsSuccess)
             {

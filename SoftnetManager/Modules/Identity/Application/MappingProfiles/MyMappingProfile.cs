@@ -48,6 +48,7 @@ namespace SoftnetManager.Modules.Identity.Application.MappingProfiles
 
             CreateMap<UpdateProfileDTO, UserProfile>()
                 .ForMember(dest=>dest.Address,opt=>opt.MapFrom(src => src.Address))
+                .ForMember(dest=>dest.UpdatedAt,opt=>opt.MapFrom(src => DateTime.UtcNow))
                 .ReverseMap()
                 .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Address));
 

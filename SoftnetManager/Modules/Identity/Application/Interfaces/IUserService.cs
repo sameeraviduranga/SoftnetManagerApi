@@ -15,7 +15,8 @@ namespace SoftnetManager.Modules.Identity.Application.Interfaces
         Task<Result<UserDTO>> RegisterUser(RegisterDTO registerDTO);
         Task<Result<UserDTO>> CreateUser(CreateUserDTO userDTO);
         Task<Result<UserDTO>> UpdateUser(int userId, JsonPatchDocument<UpdateProfileDTO>patchDocument);
-        Task<Result<UserDTO>> UpdateUserProfileAsync(int userId, JsonPatchDocument<UpdateProfileDTO> patchDocument);
+        //Task<Result<UserDTO>> UpdateUserProfileAsync(int userId, JsonPatchDocument<UpdateProfileDTO> patchDocument);
+        Task<Result<UserDTO>> UpdateUserProfileAsync(int userId, UpdateProfileDTO updateProfileDTO);
 
         Task<Result<IEnumerable<UserDTO>>> GetUsersAsync();
 

@@ -186,8 +186,9 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
             return await _context.Roles.AnyAsync(r=>r.Id == roleId);
         }
 
-        
-
-        
+        public void UpdateUserProfile(UserProfile userProfile)
+        {
+            _context.UserProfiles.Update(userProfile);
+        }
     }
 }

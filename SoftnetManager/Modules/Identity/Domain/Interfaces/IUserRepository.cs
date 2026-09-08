@@ -20,7 +20,7 @@ namespace SoftnetManager.Modules.Identity.Domain.Interfaces
         Task AssignRoleAsync(User user, Role role);
         void UpdateUserAsync(User existingUser);
         //Task<UserProfile?> GetUserProfileByUserIdAsync(int userId);
-        //void UpdateUserProfile(UserProfile userProfile); use generice method for update user profile
+        void UpdateUserProfile(UserProfile userProfile);
 
         Task<Role?> GetRole(string roleName);
         Task AssignUserRoleAsync(UserRole userRole);

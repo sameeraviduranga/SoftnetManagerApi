@@ -28,7 +28,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
         private readonly IUnitOfWork unitOfWork;
         private readonly ICurrentUserService currentUser;
 
-        public UserService(IUserRepository userRepository,ITokenService tokenService,IRefreshTokenRepository refreshTokenRepository,IFileStorageService fileStorageService,IMapper mapper,IHttpContextAccessor httpContextAccessor,IUnitOfWork unitOfWork,ICurrentUserService currentUser)
+        public UserService(IUserRepository userRepository, ITokenService tokenService, IRefreshTokenRepository refreshTokenRepository, IFileStorageService fileStorageService, IMapper mapper, IHttpContextAccessor httpContextAccessor, IUnitOfWork unitOfWork, ICurrentUserService currentUser)
         {
             this.userRepository = userRepository;
             this.tokenService = tokenService;
@@ -55,7 +55,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
         public async Task<Result<TokenResponseDTO>> Login(LoginDTO loginDTO)
         {
-           var client  = await userRepository.GetClientByIdAsync(loginDTO.ClientId);
+            var client = await userRepository.GetClientByIdAsync(loginDTO.ClientId);
             if (client == null)
             {
                 return Result<TokenResponseDTO>.Fail("Invalid Client Credentials");
@@ -74,7 +74,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
                 return Result<TokenResponseDTO>.Fail("Invalid credentials.");
             }
 
-            var token = tokenService.GenerateJwtToken(user,client);
+            var token = tokenService.GenerateJwtToken(user, client);
 
             var refreshToken = tokenService.GenerateRefreshToken();
             var hashedRefreshToken = tokenService.HashToken(refreshToken);
@@ -83,7 +83,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
             {
                 Token = hashedRefreshToken,
                 UserId = user.ID,
-                ClientId=client.Id,
+                ClientId = client.Id,
                 IsRevoked = false,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddDays(7),
@@ -131,7 +131,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
             var user = storedRefreshToken.User;
             var client = storedRefreshToken.Client;
 
-            var newAccessToken =  tokenService.GenerateJwtToken(user,client);
+            var newAccessToken = tokenService.GenerateJwtToken(user, client);
             var newRefreshToken = tokenService.GenerateRefreshToken();
 
             var hashedRefreshToken = tokenService.HashToken(newRefreshToken);
@@ -183,7 +183,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
                 user.UserProfile.CreatedBy = 1;
 
 
-                
+
                 //unitOfWork.Users.CreateUserAsync(user);
                 await unitOfWork.Users.AddAsync(user);
 
@@ -201,7 +201,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
                 //    Role = role
                 //});
 
-                
+
 
                 await unitOfWork.CommitTransactionAsync();//commit transaction
 
@@ -232,7 +232,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
                 {
                     return Result<bool>.Fail("User not found");
                 }
-                
+
 
                 existingUser.UserProfile.IsActive = toggleActiveStatusDTO.IsActive;
                 existingUser.UserProfile.UpdatedBy = 1;//replace with userId from current 
@@ -256,7 +256,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
         public async Task<Result<UserDTO>> UpdateUser(int userId, JsonPatchDocument<UpdateProfileDTO> patchDocument)
         {
             var existingUser = await userRepository.GetUserByIdAsync(userId);
-            if (existingUser == null || existingUser.UserProfile== null)
+            if (existingUser == null || existingUser.UserProfile == null)
             {
                 return Result<UserDTO>.Fail("User not  found");
             }
@@ -266,12 +266,12 @@ namespace SoftnetManager.Modules.Identity.Application.Services
             //validation patch operation
             foreach (var operation in patchDocument.Operations)
             {
-                if (operation.path.Equals("/SalutationID",StringComparison.OrdinalIgnoreCase) && operation.value != null)
+                if (operation.path.Equals("/SalutationID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
                 {
                     int salutionId = Convert.ToInt32(operation.value);
                     if (!await userRepository.IsSalutationExists(salutionId))
                     {
-                       return  Result<UserDTO>.Fail("Salution not exists.");
+                        return Result<UserDTO>.Fail("Salution not exists.");
                     }
                 }
                 if (operation.path.Equals("/GenderID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
@@ -316,7 +316,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
             ValidationContext validationContext = new ValidationContext(userProfileDto);
             List<ValidationResult> validationResults = new List<ValidationResult>();
 
-            if (!Validator.TryValidateObject(userProfileDto,validationContext,validationResults,true))
+            if (!Validator.TryValidateObject(userProfileDto, validationContext, validationResults, true))
             {
                 return Result<UserDTO>.Fail(string.Join(", ", validationResults.Select(x => x.ErrorMessage)));
             }
@@ -327,12 +327,12 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
             userRepository.UpdateUserAsync(existingUser);
 
-            
+
             //if (!isUpdate)
             //{
             //    return Result<UserDTO>.Fail("Failed to update user.");
             //}
-            
+
             var userDto = mapper.Map<UserDTO>(existingUser);
 
             return Result<UserDTO>.Success(userDto);
@@ -340,95 +340,142 @@ namespace SoftnetManager.Modules.Identity.Application.Services
         }
 
 
-        public async Task<Result<UserDTO>> UpdateUserProfileAsync(int userId,JsonPatchDocument<UpdateProfileDTO> patchDocument)
+        public async Task<Result<UserDTO>> UpdateUserProfileAsync(int userId, UpdateProfileDTO updateProfileDTO)
         {
             var curretUserId = currentUser.UserID;
+            var uploadedImagePath = string.Empty;
+
+            
+
+            var existingUser = await unitOfWork.Users.GetUserByIdAsync(userId);
+            if (existingUser == null || existingUser.UserProfile == null)
+            {
+                return Result<UserDTO>.Fail("User not found");
+            }
+
+            var userProfile = existingUser.UserProfile;
+
+            if (userId != updateProfileDTO.UserID)
+            {
+                return Result<UserDTO>.Fail("User ID mismatch");
+            }
+
+            //validation
+            if (updateProfileDTO.SalutationID > 0)
+            {
+                if (!await userRepository.IsSalutationExists(updateProfileDTO.SalutationID))
+                {
+                    return Result<UserDTO>.Fail("Salutation Doesn't exists");
+                }
+
+                userProfile.SalutationID = updateProfileDTO.SalutationID;
+            }
+
+            if (updateProfileDTO.GenderID > 0)
+            {
+                if (!await userRepository.IsGenderExists(updateProfileDTO.GenderID))
+                {
+                    return Result<UserDTO>.Fail("Gender Doesn't exists");
+                }
+                userProfile.GenderID = updateProfileDTO.GenderID;
+            }
+
+            if (updateProfileDTO.MaritialStatusID > 0)
+            {
+                if (!await userRepository.IsMaritialStatusExists(updateProfileDTO.MaritialStatusID))
+                {
+                    return Result<UserDTO>.Fail("Maritial Status Doesn't exists");
+                }
+                userProfile.MaritialStatusID = updateProfileDTO.MaritialStatusID;
+            }
+
+            if (updateProfileDTO.BranchID > 0)
+            {
+                if (!await userRepository.IsBranchExists(updateProfileDTO.BranchID))
+                {
+                    return Result<UserDTO>.Fail("Branch Doesn't exists");
+                }
+                userProfile.BranchID = updateProfileDTO.BranchID;
+            }
+
+            if (updateProfileDTO.DesignationID > 0)
+            {
+                if (!await userRepository.IsDesignationExists(updateProfileDTO.DesignationID))
+                {
+                    return Result<UserDTO>.Fail("Designation Doesn't exists");
+                }
+                userProfile.DesignationID = updateProfileDTO.DesignationID;
+            }
+
+            if (!string.IsNullOrEmpty(updateProfileDTO.FirstName) && userProfile.FirstName != updateProfileDTO.FirstName)
+            {
+                userProfile.FirstName = updateProfileDTO.FirstName;
+            }
+
+            if (!string.IsNullOrEmpty(updateProfileDTO.LastName) && userProfile.LastName != updateProfileDTO.LastName)
+            {
+                userProfile.LastName = updateProfileDTO.LastName;
+            }
+
+            if (updateProfileDTO.Dob < DateTime.UtcNow && userProfile.Dob != updateProfileDTO.Dob)
+            {
+                userProfile.Dob = updateProfileDTO.Dob;
+            }
+
+
+            if (!string.IsNullOrEmpty(updateProfileDTO.PhoneNumber) && userProfile.PhoneNumber != updateProfileDTO.PhoneNumber)
+            {
+                userProfile.PhoneNumber = updateProfileDTO.PhoneNumber;
+            }
+
+            if (!string.IsNullOrEmpty(updateProfileDTO.Nic) && userProfile.Nic != updateProfileDTO.Nic)
+            {
+                if (await userRepository.IsNicExists(updateProfileDTO.Nic))
+                {
+                    return Result<UserDTO>.Fail("NIC is already registered");
+                }
+                userProfile.Nic = updateProfileDTO.Nic;
+            }
+
+            if (updateProfileDTO.Address != null)
+            {
+                if (userProfile.Address == null)
+                {
+                    var address = mapper.Map<Address>(updateProfileDTO.Address);// Address එකක් නැත්නම් විතරක් අලුතෙන් Map කරලා Create වෙන්න දෙනවා
+                    userProfile.Address = address;
+                }
+                else
+                {
+                    mapper.Map(updateProfileDTO.Address, userProfile.Address);// කලින් Address එකක් තියෙනවා නම් AutoMapper එකෙන් ඒ තියෙන Object එකටම values Update කරනවා
+                }
+            }
+
+           
+
+
             try
             {
+
+                if (updateProfileDTO.ProfileImageUrl != null)
+                {
+                    uploadedImagePath = await fileStorageService.UploadProfileImageAsync(updateProfileDTO.ProfileImageUrl);
+                    userProfile.ProfileImageUrl = uploadedImagePath;
+                }
+
+                userProfile.UpdatedAt = DateTime.UtcNow;
+                userProfile.UpdatedBy = 1; // replace with current user id
+
                 await unitOfWork.BeginTransactionAsync();
 
-                var existingUser = await unitOfWork.Users.GetUserByIdAsync(userId);
-                if (existingUser == null || existingUser.UserProfile == null)
-                {
-                    return Result<UserDTO>.Fail("User not found");
-                }
-
-                var userProfleDto = mapper.Map<UpdateProfileDTO>(existingUser.UserProfile);
-
-                //validation
-                foreach (var operation in patchDocument.Operations)
-                {
-                    if (operation.path.Equals("/SalutationID",StringComparison.OrdinalIgnoreCase) && operation.value != null)
-                    {
-                        var salutationId = Convert.ToInt32(operation.value);
-
-                        if (!await userRepository.IsSalutationExists(salutationId))
-                        {
-                            return Result<UserDTO>.Fail("Salution not exists.");
-                        }
-                    }
-
-                    if (operation.path.Equals("/GenderID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
-                    {
-                        int genderID = Convert.ToInt32(operation.value);
-                        if (!await userRepository.IsGenderExists(genderID))
-                        {
-                            return Result<UserDTO>.Fail("Gender not exists.");
-                        }
-                    }
-                    if (operation.path.Equals("/MaritialStatusID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
-                    {
-                        int maritialStatusID = Convert.ToInt32(operation.value);
-                        if (!await userRepository.IsMaritialStatusExists(maritialStatusID))
-                        {
-                            return Result<UserDTO>.Fail("MaritialStatus not exists.");
-                        }
-                    }
-                    if (operation.path.Equals("/BranchID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
-                    {
-                        int branchID = Convert.ToInt32(operation.value);
-                        if (!await userRepository.IsBranchExists(branchID))
-                        {
-                            return Result<UserDTO>.Fail("Branch not exists.");
-                        }
-                    }
-                    if (operation.path.Equals("/DesignationID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
-                    {
-                        int designationID = Convert.ToInt32(operation.value);
-                        if (!await userRepository.IsDesignationExists(designationID))
-                        {
-                            return Result<UserDTO>.Fail("designation not exists.");
-                        }
-                    }
-
-                }
-
-                //apply patch
-                patchDocument.ApplyTo(userProfleDto);
-
-                //validate dto
-
-                ValidationContext validationContext = new ValidationContext(userProfleDto);
-                List<ValidationResult> validationResults = new List<ValidationResult>();
-
-                if (!Validator.TryValidateObject(userProfleDto, validationContext, validationResults, true))
-                {
-                    return Result<UserDTO>.Fail(string.Join(",", validationResults.Select(x => x.ErrorMessage)));
-                }
-
-                //map back to entity
-                mapper.Map(userProfleDto, existingUser.UserProfile);
-
-                existingUser.UserProfile.UpdatedBy = 1;//replace with current user id
-                existingUser.UserProfile.UpdatedAt = DateTime.UtcNow;
-
-                unitOfWork.Users.Update(existingUser);
+                unitOfWork.Users.UpdateUserProfile(userProfile);
 
                 await unitOfWork.CommitTransactionAsync();
 
-                var userDto = mapper.Map<UserDTO>(existingUser);
+                var updatedUser = await userRepository.GetUserByIdAsync(userId);
 
-                return Result<UserDTO>.Success(userDto);
+                var userdto = mapper.Map<UserDTO>(updatedUser);
+
+                return Result<UserDTO>.Success(userdto);
 
 
             }
@@ -437,7 +484,11 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
                 if (unitOfWork.HasActiveTransaction)
                 {
-                    await unitOfWork.RollbackTransactionAsync(); 
+                    await unitOfWork.RollbackTransactionAsync();
+                }
+                if (!string.IsNullOrEmpty(uploadedImagePath))
+                {
+                    await fileStorageService.DeleteProfileImageAsync(uploadedImagePath);
                 }
                 return Result<UserDTO>.Fail(ex.Message);
             }
@@ -528,11 +579,11 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
                 foreach (var role in distinctRoles)
                 {
-                    
-                     user.UserRoles.Add(new UserRole {RoleID = role });
+
+                    user.UserRoles.Add(new UserRole { RoleID = role });
 
                 }
-                
+
 
                 await unitOfWork.CommitTransactionAsync();
 

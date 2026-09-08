@@ -4,6 +4,7 @@ namespace SoftnetManager.Modules.Identity.Application.DTOs.UserProfile
 {
     public class UpdateProfileDTO
     {
+        public int UserID { get; set; }
         [Required(ErrorMessage = "Salutation is required.")]
         public int SalutationID { get; set; }
         [Required(ErrorMessage = "Gender is required.")]
@@ -29,7 +30,7 @@ namespace SoftnetManager.Modules.Identity.Application.DTOs.UserProfile
         public string Nic { get; set; } = string.Empty;
         [Required(ErrorMessage = "Date of birth is required.")]
         public DateTime Dob { get; set; }
-        public string? ProfileImageUrl { get; set; }
+        public IFormFile? ProfileImageUrl { get; set; }
 
     }
 }
