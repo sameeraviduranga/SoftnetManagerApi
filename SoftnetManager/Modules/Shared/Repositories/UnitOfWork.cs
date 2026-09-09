@@ -14,14 +14,15 @@ namespace SoftnetManager.Modules.Shared.Repositories
         private IDbContextTransaction? _transaction;// Define repositories for each entity
 
         public IUserRepository Users { get; }
-        
+        public IRoleRepository Roles { get;}
+
 
         public UnitOfWork(AppDbContext context)
         {
             this.context = context;
 
             Users = new UserRepository(context);
-            
+            Roles = new RoleRepository(context);
            
             
         }

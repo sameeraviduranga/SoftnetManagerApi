@@ -7,6 +7,7 @@ namespace SoftnetManager.Modules.Shared.Interfaces
     {
         //Define repositories for each entity
         IUserRepository Users { get; }
+        IRoleRepository Roles { get; }
         //Iproductrepository Products { get; }
         //Icustomerrepository Customers { get; }
 

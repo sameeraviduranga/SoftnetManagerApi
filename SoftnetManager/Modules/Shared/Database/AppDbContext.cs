@@ -85,13 +85,15 @@ namespace SoftnetManager.Modules.Shared.Database
 
             modelBuilder.Entity<UserRole>()
                 .HasOne(ur => ur.User)
-                .WithMany(u=>u.UserRoles)
+                .WithMany(u => u.UserRoles)
                 .HasForeignKey(ur => ur.UserID);
 
             modelBuilder.Entity<UserRole>()
-                .HasOne(ur=>ur.Role)
+                .HasOne(ur => ur.Role)
                 .WithMany(r => r.UserRoles)
-                .HasForeignKey(ur => ur.RoleID);
+                .HasForeignKey(ur => ur.RoleID)
+                .OnDelete(DeleteBehavior.Restrict); 
+
 
             modelBuilder.Entity<Role>().HasData(
                 new Role { Id = 1, Name = "Admin", Description = "Admin Role" },
@@ -308,6 +310,7 @@ namespace SoftnetManager.Modules.Shared.Database
         public DbSet<Role> Roles { get; set; }
         public DbSet<Client> Clients { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
+        public DbSet<RolePermission> RolePermission { get; set; }
         public DbSet<SigningKey> SigningKeys { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<Province> Provinces { get; set; }

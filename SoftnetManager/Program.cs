@@ -85,11 +85,15 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IUserRepository,UserRepository>();
 builder.Services.AddScoped<IUserService,UserService>();
+builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+
 builder.Services.AddScoped<ITokenService,Tokenservice>();
 builder.Services.AddScoped<IRefreshTokenRepository,RefreshTokenRepository>();
 builder.Services.AddScoped<IFileStorageService,FileStorageService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
 
 
 //add policies
