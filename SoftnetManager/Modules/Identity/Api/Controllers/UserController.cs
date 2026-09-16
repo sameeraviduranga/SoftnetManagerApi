@@ -1,16 +1,19 @@
 ﻿using AutoMapper;
 using Azure;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens.Experimental;
 using SoftnetManager.Modules.Identity.Api.Response;
 using SoftnetManager.Modules.Identity.Application.DTOs.LoginAndRegister;
 using SoftnetManager.Modules.Identity.Application.DTOs.User;
 using SoftnetManager.Modules.Identity.Application.DTOs.UserProfile;
 using SoftnetManager.Modules.Identity.Application.Interfaces;
+using SoftnetManager.Modules.Identity.Application.Validators;
 using SoftnetManager.Modules.Identity.Domain.Entities;
 using SoftnetManager.Modules.Shared.Database;
 using System.IdentityModel.Tokens.Jwt;
@@ -29,15 +32,27 @@ namespace SoftnetManager.Modules.Identity.Api.Controllers
             this.userService = userService;
         }
 
-        [HttpPost("Register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDTO registerDTO)
+        [HttpPost]
+        public async Task<IActionResult> Register([FromBody] RegisterDTO registerDTO,[FromServices]IValidator<RegisterDTO>validator,CancellationToken cancellationToken)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<UserDTO>.Fail(ModelState,"Invalid request body"));
             }
 
-            var result = await userService.RegisterUser(registerDTO);
+            var validationResult = await validator.ValidateAsync(registerDTO);
+            if (!validationResult.IsValid)
+            {
+                var validationResponse = validationResult.Errors.Select(e => new
+                {
+                    Property = e.PropertyName,
+                    Error = e.ErrorMessage
+                });
+
+                return BadRequest(ApiResponse<UserDTO>.Fail(validationResponse));
+            }
+
+            var result = await userService.RegisterUserAsync(registerDTO,cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -49,10 +64,10 @@ namespace SoftnetManager.Modules.Identity.Api.Controllers
 
             //return CreatedAtAction(nameof(GetProfile), new { id = newUser.Id }, new { message = "User registered successfully." });
         }
-        [HttpGet("GetUsers")]
-        public async Task<IActionResult> GetUsers()
+        [HttpGet]
+        public async Task<IActionResult> GetUsers(CancellationToken cancellationToken)
         {
-            var result = await userService.GetUsersAsync();
+            var result = await userService.GetUsersAsync(cancellationToken);
             if (!result.IsSuccess)
             {
                 return BadRequest(ApiResponse<IEnumerable<UserDTO>>.Fail(result!, result.Error!));
@@ -88,55 +103,55 @@ namespace SoftnetManager.Modules.Identity.Api.Controllers
         //}
 
         
-        [HttpPatch("updateProfile/{userId}")]
-        public async Task<IActionResult> UpdateProfile(int userId, [FromForm]UpdateProfileDTO updateProfileDTO)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<object>.Fail(ModelState,"Invalid Request body"));
-            }
+        //[HttpPatch("{userId}")]
+        //public async Task<IActionResult> UpdateProfile(int userId, [FromForm]UpdateProfileDTO updateProfileDTO)
+        //{
+        //    if (!ModelState.IsValid)
+        //    {
+        //        return BadRequest(ApiResponse<object>.Fail(ModelState,"Invalid Request body"));
+        //    }
 
-            var result = await userService.UpdateUserProfileAsync(userId, updateProfileDTO);
+        //    var result = await userService.UpdateUserProfileAsync(userId, updateProfileDTO);
 
-            if (!result.IsSuccess)
-            {
-                return BadRequest(ApiResponse<object>.Fail(result.Error!, "User not updated"));
-            }
-
-
-            //var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            //var emailClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email);
+        //    if (!result.IsSuccess)
+        //    {
+        //        return BadRequest(ApiResponse<object>.Fail(result.Error!, "User not updated"));
+        //    }
 
 
-            //if (emailClaim == null)
-            //{
-            //    return Unauthorized(ApiResponse<object>.Fail("Invalid token: Email claim missing."));
-            //}
+        //    //var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        //    //var emailClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email);
 
-            //emailClaim.Value.ToString()
 
-            //var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub);
+        //    //if (emailClaim == null)
+        //    //{
+        //    //    return Unauthorized(ApiResponse<object>.Fail("Invalid token: Email claim missing."));
+        //    //}
 
-            //if (userIdClaim == null)
-            //{
-            //    return Unauthorized(ApiResponse<UserDTO>.Fail("User Unauthorized"));
-            //}
+        //    //emailClaim.Value.ToString()
 
-            //var userId = Convert.ToInt32(userIdClaim.Value);
-            return Ok(ApiResponse<object>.Success(result.Data, "User profile updated successfully"));
+        //    //var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub);
+
+        //    //if (userIdClaim == null)
+        //    //{
+        //    //    return Unauthorized(ApiResponse<UserDTO>.Fail("User Unauthorized"));
+        //    //}
+
+        //    //var userId = Convert.ToInt32(userIdClaim.Value);
+        //    return Ok(ApiResponse<object>.Success(result.Data, "User profile updated successfully"));
             
         
-        }
+        //}
 
         [HttpPut("toggleActiveStatus")]
-        public async Task<IActionResult> ToggleActiveStatus([FromBody] ToggleActiveStatusDTO toggleActiveStatusDTO)
+        public async Task<IActionResult> ToggleActiveStatus([FromBody] ToggleActiveStatusDTO toggleActiveStatusDTO,CancellationToken cancellationToken)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail(ModelState, "Invalid request body"));
             }
 
-            var result = await userService.ToggleUserActiveStatusAsync(toggleActiveStatusDTO);
+            var result = await userService.ToggleUserActiveStatusAsync(toggleActiveStatusDTO,cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -145,19 +160,52 @@ namespace SoftnetManager.Modules.Identity.Api.Controllers
 
             return Ok(ApiResponse<object>.Success(result.Data!, "User active status toggled successfully"));
         }
+
+
         [HttpPost("CreateUser")]
-        public async Task<IActionResult> CreateUser([FromForm]CreateUserDTO createUserDTO)
+        public async Task<IActionResult> CreateUser([FromForm]CreateUserDTO createUserDTO, IValidator<CreateUserDTO> validator, CancellationToken cancellationToken)
         {
-            if (!ModelState.IsValid)
+            var validationResult = await validator.ValidateAsync(createUserDTO);
+            if (!validationResult.IsValid)
             {
-                return BadRequest(ApiResponse<object>.Fail(ModelState, "Invalid request body"));
+                var errorResponse = validationResult.Errors.Select(e => new
+                {
+                    Property = e.PropertyName,
+                    Error = e.ErrorMessage,
+
+                });
+                return BadRequest(ApiResponse<object>.Fail(new {Errors=errorResponse}));
             }
-            var result = await userService.CreateUser(createUserDTO);
+            var result = await userService.CreateUserAsync(createUserDTO,cancellationToken);
             if (!result.IsSuccess)
             {
                 return BadRequest(ApiResponse<object>.Fail(result.Error!, "User not created"));
             }
             return Ok(ApiResponse<UserDTO>.Success(result.Data!, "User created successfully"));
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteUser([FromRoute]int id,CancellationToken cancellationToken)
+        {
+            
+            var result = await userService.DeleteUserAsync(id,cancellationToken);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(ApiResponse<object>.Fail(result.Error!, "User not Deleted"));
+            }
+            return Ok(ApiResponse<object>.Success(result.Data!, "User deleted successfully"));
+        }
+
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> UpdateUserProfile(int id,JsonPatchDocument<UpdateUserProfileDTO>jsonPatchDoc,CancellationToken cancellationToken)
+        {
+            var result = await userService.UpdateUserProfileAsync(id, jsonPatchDoc, cancellationToken);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(ApiResponse<UserDTO>.Fail(result.Error!,"Fail to update User"));
+            }
+
+            return Ok(ApiResponse<UserDTO>.Success(result.Data, "User Updated Successfully."));
         }
 
     }

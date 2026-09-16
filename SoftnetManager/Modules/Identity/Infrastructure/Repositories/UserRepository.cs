@@ -20,18 +20,7 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task AssignRoleAsync(User user, Role role)
-        {
-            var userRole = new UserRole
-            {
-                User = user,
-                RoleID = role.Id,
-            };
-
-            _context.UserRoles.Add(userRole);
-           // await _context.SaveChangesAsync();
-
-        }
+        
 
         public void CreateUser(User user)
         {
@@ -40,7 +29,7 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
             
         }
 
-        public void CreateUserProfileAsync(UserProfile userProfile)
+        public void CreateUserProfile(UserProfile userProfile)
         {
             _context.UserProfiles.Add(userProfile);
             //await _context.SaveChangesAsync();
@@ -48,17 +37,17 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
             
         }
 
-        public SigningKey? GetActiveSigningKey()
+        public async Task<SigningKey?> GetActiveSigningKeyAsync(CancellationToken cancellationToken)
         {
-            return _context.SigningKeys.FirstOrDefault(k=>k.IsActive);
+            return await _context.SigningKeys.FirstOrDefaultAsync(k=>k.IsActive,cancellationToken);
         }
 
-        public async Task<Client?> GetClientByIdAsync(string clientId)
+        public async Task<Client?> GetClientByIdAsync(string clientId, CancellationToken cancellationToken)
         {
-            return await _context.Clients.FirstOrDefaultAsync(c => c.ClientId == clientId);
+            return await _context.Clients.FirstOrDefaultAsync(c => c.ClientId == clientId,cancellationToken);
         }
 
-        public async Task<User?> GetUserByEmailAsync(string email)
+        public async Task<User?> GetUserByEmailAsync(string email, CancellationToken cancellationToken)
         {
             return await _context.Users
                 .Include(u=>u.UserProfile)
@@ -66,68 +55,68 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
                     .ThenInclude(ur=>ur.Role)
                         .ThenInclude(r=>r.RolePermissions)
                             .ThenInclude(p=>p.Permission)
-                .FirstOrDefaultAsync(u=>u.Email == email);
+                .FirstOrDefaultAsync(u=>u.Email == email,cancellationToken);
 
         }
 
-        public async Task<Role?> GetRole(string roleName)
+        public async Task<Role?> GetRole(string roleName, CancellationToken cancellationToken)
         {
-            return await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
+            return await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleName,cancellationToken);
         }
 
-        public async Task<bool> IsEmailExists(string email)
+        public async Task<bool> IsEmailExistAsync(string email,CancellationToken cancellationToken)
         {
-            return await _context.Users.AnyAsync(u=>u.Email == email);
+            return await _context.Users.AnyAsync(u=>u.Email == email,cancellationToken);
         }
 
-        public async Task<bool> CheckRegisteredEmail(User user, string email)
+        public async Task<bool> CheckRegisteredEmailAsync(User user, string email,CancellationToken cancellationToken)
         {
-            return await _context.Users.AnyAsync(u=>u.Email ==  email && u.ID != user.ID);
+            return await _context.Users.AnyAsync(u=>u.Email ==  email && u.ID != user.ID,cancellationToken);
         }
 
-        public async Task<bool> CheckRegisteredNic(User user, string nic)
+        public async Task<bool> CheckRegisteredNicAsync(int userId, string nic, CancellationToken cancellationToken)
         {
-            return await _context.Users.AnyAsync(u=>u.UserProfile.Nic == nic && u.ID != user.ID);
+            return await _context.Users.AnyAsync(u=>u.UserProfile.Nic == nic && u.ID != userId,cancellationToken);
         }
 
-        public void UpdateUserAsync(User existingUser)
+        public void UpdateUser(User existingUser)
         {
             _context.Users.Update(existingUser);
             //await _context.SaveChangesAsync();
             //return true;
         }
 
-        public async Task<bool> IsSalutationExists(int? salutationId)
+        public async Task<bool> IsSalutationExistAsync(int salutationId, CancellationToken cancellationToken)
         {
-            return await _context.Salutations.AnyAsync(s=>s.ID == salutationId);
+            return await _context.Salutations.AnyAsync(s=>s.ID == salutationId,cancellationToken);
         }
 
-        public async Task<bool> IsGenderExists(int? genderId)
+        public async Task<bool> IsGenderExistAsync(int genderId, CancellationToken cancellationToken)
         {
-            return await _context.Genders.AnyAsync(g => g.ID == genderId);
+            return await _context.Genders.AnyAsync(g => g.ID == genderId,cancellationToken);
         }
 
-        public async Task<bool> IsMaritialStatusExists(int? maritialStatusId)
+        public async Task<bool> IsMaritialStatusExistAsync(int maritialStatusId, CancellationToken cancellationToken)
         {
-            return await _context.MaritialStatuses.AnyAsync(m=>m.ID == maritialStatusId);
+            return await _context.MaritialStatuses.AnyAsync(m=>m.ID == maritialStatusId,cancellationToken);
         }
 
-        public async Task<bool> IsAddressExists(int? addressId)
+        public async Task<bool> IsAddressExistAsync(int? addressId,CancellationToken cancellationToken)
         {
-            return await _context.Address.AnyAsync(a=>a.ID == addressId);
+            return await _context.Addresses.AnyAsync(a=>a.ID == addressId,cancellationToken);
         }
 
-        public async Task<bool> IsBranchExists(int? branchId)
+        public async Task<bool> IsBranchExistAsync(int branchId, CancellationToken cancellationToken)
         {
-            return await _context.Branches.AnyAsync(b=>b.ID == branchId);
+            return await _context.Branches.AnyAsync(b=>b.ID == branchId,cancellationToken);
         }
 
-        public async Task<bool> IsDesignationExists(int? designationId)
+        public async Task<bool> IsDesignationExistAsync(int designationId, CancellationToken cancellationToken)
         {
-            return await _context.Designations.AnyAsync(d=>d.ID == designationId);
+            return await _context.Designations.AnyAsync(d=>d.ID == designationId,cancellationToken);
         }
 
-        public async Task<IEnumerable<User>> GetAllUsersAsync()
+        public async Task<IEnumerable<User>> GetAllUsersAsync(CancellationToken cancellationToken)
         {
             return await _context.Users.AsNoTracking()
                 .Include(u => u.UserProfile)    
@@ -137,20 +126,19 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
                 .Include(u => u.UserProfile)
                     .ThenInclude(up => up.MaritialStatus)
                 .Include(u => u.UserProfile)
-                    .ThenInclude(up => up.Address)
+                    //.ThenInclude(up => up.Address)
                 .Include(u => u.UserProfile)
                     .ThenInclude(up => up.Branch)
                 .Include(u => u.UserProfile)
                     .ThenInclude(up => up.Designation)
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
-        public async Task<User?> GetUserByIdAsync(int id)
+        public async Task<User?> GetUserByIdAsync(int id, CancellationToken cancellationToken)
         {
             return await _context.Users
-
                 .Include(u => u.UserProfile)
                     .ThenInclude(up => up.Salutation)
                 .Include(u => u.UserProfile)
@@ -167,25 +155,14 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
                    .ThenInclude(ur => ur.Role)
                        .ThenInclude(r => r.RolePermissions)
                            .ThenInclude(p => p.Permission)
-               .FirstOrDefaultAsync(u => u.ID == id);
+               .FirstOrDefaultAsync(u => u.ID == id,cancellationToken);
         }
 
-        public async Task AssignUserRoleAsync(UserRole userRole)
+        
+        public async Task<bool> IsNicExistAsync(string Nic, CancellationToken cancellationToken)
         {
-            await _context.UserRoles.AddAsync(userRole);
-            //await _context.SaveChangesAsync();
+           return await _context.Users.AnyAsync(u=>u.UserProfile.Nic == Nic,cancellationToken);
         }
-
-        public async Task<bool> IsNicExists(string Nic)
-        {
-           return await _context.Users.AnyAsync(u=>u.UserProfile.Nic == Nic);
-        }
-
-        public async Task<bool> IsRoleExists(int roleId)
-        {
-            return await _context.Roles.AnyAsync(r=>r.Id == roleId);
-        }
-
         public void UpdateUserProfile(UserProfile userProfile)
         {
             _context.UserProfiles.Update(userProfile);

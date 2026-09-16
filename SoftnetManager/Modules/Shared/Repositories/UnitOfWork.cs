@@ -5,6 +5,7 @@ using SoftnetManager.Modules.Identity.Infrastructure.Repositories;
 using SoftnetManager.Modules.Shared.Database;
 using SoftnetManager.Modules.Shared.Interfaces;
 using System.Data;
+using static Azure.Core.HttpHeader;
 
 namespace SoftnetManager.Modules.Shared.Repositories
 {
@@ -29,22 +30,22 @@ namespace SoftnetManager.Modules.Shared.Repositories
         public bool HasActiveTransaction =>_transaction != null;
         //IUserRepository IUnitOfWork.Users => throw new NotImplementedException();
 
-        public async Task<IDbContextTransaction> BeginTransactionAsync()
+        public async Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken)
         {
             if (_transaction != null)
                 return _transaction;
 
-            _transaction = await context.Database.BeginTransactionAsync();
+            _transaction = await context.Database.BeginTransactionAsync(cancellationToken);
             return _transaction;
         }
 
-        public async Task CommitTransactionAsync()
+        public async Task CommitTransactionAsync(CancellationToken cancellationToken)
         {
             if ( _transaction == null)
                 throw new InvalidOperationException("No active transaction to commit.");
 
-            await context.SaveChangesAsync();
-            await _transaction.CommitAsync();
+            await context.SaveChangesAsync(cancellationToken);
+            await _transaction.CommitAsync(CancellationToken.None); // Commit is cleanup/finalization → don't cancel it
             await DisposeTransactionAsync();
         }
 
@@ -52,14 +53,15 @@ namespace SoftnetManager.Modules.Shared.Repositories
         {
             _transaction?.Dispose();
             context.Dispose();
+            GC.SuppressFinalize(this);
         }
 
-        public async Task RollbackTransactionAsync()
+        public async Task RollbackTransactionAsync(CancellationToken cancellationToken)
         {
             if (_transaction == null)
                 throw new InvalidOperationException("No active transaction to rollback.");
 
-            await _transaction.RollbackAsync();
+            await _transaction.RollbackAsync(CancellationToken.None);
 
             await DisposeTransactionAsync();
         }
@@ -69,9 +71,9 @@ namespace SoftnetManager.Modules.Shared.Repositories
             return context.SaveChanges();
         }
 
-        public async Task<int> SaveChangesAsync()
+        public async Task<int> SaveChangesAsync(CancellationToken cancellationToken)
         {
-            return await context.SaveChangesAsync();
+            return await context.SaveChangesAsync(cancellationToken);
         }
         
 

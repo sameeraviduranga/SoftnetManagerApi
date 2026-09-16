@@ -5,42 +5,40 @@ namespace SoftnetManager.Modules.Identity.Domain.Interfaces
 {
     public interface IUserRepository:IRepository<User>
     {
-        Task<Client?> GetClientByIdAsync(string clientId);
-        Task<User?> GetUserByEmailAsync(string email);
-        Task<User?> GetUserByIdAsync(int id);
-        Task<IEnumerable<User>> GetAllUsersAsync();
+        Task<Client?> GetClientByIdAsync(string clientId,CancellationToken cancellationToken);
+        Task<User?> GetUserByEmailAsync(string email, CancellationToken cancellationToken);
+        Task<User?> GetUserByIdAsync(int id, CancellationToken cancellationToken);
+        Task<IEnumerable<User>> GetAllUsersAsync(CancellationToken cancellationToken);
         Task AddRefreshTokenAsync(RefreshToken refreshToken);
-        SigningKey? GetActiveSigningKey();
+        Task<SigningKey?> GetActiveSigningKeyAsync(CancellationToken cancellationToken);
 
 
 
-
-        void CreateUserProfileAsync(UserProfile userProfile);
         void CreateUser(User user);
-        Task AssignRoleAsync(User user, Role role);
-        void UpdateUserAsync(User existingUser);
+        void CreateUserProfile(UserProfile userProfile);
+        void UpdateUser(User existingUser);
         //Task<UserProfile?> GetUserProfileByUserIdAsync(int userId);
         void UpdateUserProfile(UserProfile userProfile);
 
-        Task<Role?> GetRole(string roleName);
-        Task AssignUserRoleAsync(UserRole userRole);
-        Task<bool> IsRoleExists(int roleId);
-
-
-
-        Task<bool> IsEmailExists(string email);
-        Task<bool> IsNicExists(string Nic);
-
-        Task<bool> CheckRegisteredEmail(User user,string email);
-        Task<bool> CheckRegisteredNic(User user,string nic);
+        Task<Role?> GetRole(string roleName, CancellationToken cancellationToken);
+        //Task AssignUserRoleAsync(UserRole userRole);
         
 
-        Task<bool> IsSalutationExists(int? salutationId);
-        Task<bool> IsGenderExists(int? genderId);
-        Task<bool> IsMaritialStatusExists(int? maritialStatusId);
-        Task<bool> IsAddressExists(int? addressId);
-        Task<bool> IsBranchExists(int? branchId);
-        Task<bool> IsDesignationExists(int? designationId);
+
+
+        Task<bool> IsEmailExistAsync(string email,CancellationToken cancellationToken);
+        Task<bool> IsNicExistAsync(string Nic, CancellationToken cancellationToken);
+
+        Task<bool> CheckRegisteredEmailAsync(User user,string email, CancellationToken cancellationToken);
+        Task<bool> CheckRegisteredNicAsync(int userId,string nic, CancellationToken cancellationToken);
+        
+
+        Task<bool> IsSalutationExistAsync(int salutationId, CancellationToken cancellationToken);
+        Task<bool> IsGenderExistAsync(int genderId, CancellationToken cancellationToken);
+        Task<bool> IsMaritialStatusExistAsync(int maritialStatusId,CancellationToken cancellationToken);
+        Task<bool> IsAddressExistAsync(int? addressId, CancellationToken cancellationToken);
+        Task<bool> IsBranchExistAsync(int branchId, CancellationToken cancellationToken);
+        Task<bool> IsDesignationExistAsync(int designationId, CancellationToken cancellationToken);
         
 
         

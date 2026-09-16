@@ -15,31 +15,42 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
             this.context = context;
         }
 
-        public async Task<Role?> GetRoleById(int id)
+        public async Task<bool> AllRoleExistAsync(List<int> roles, CancellationToken cancellationToken)
+        {
+            if (roles == null || roles.Count == 0)
+            {
+                return true;
+            }
+            var count = await context.Roles.CountAsync(r => roles.Contains(r.Id),cancellationToken);
+            return count == roles.Count;
+        }
+
+        public async Task<Role?> GetRoleByIdAsync(int id, CancellationToken cancellationToken)
         {
             return await context.Roles
                 .Include(r=>r.UserRoles)
                 .Include(r => r.RolePermissions)
                     .ThenInclude(rp => rp.Permission)
-                .FirstOrDefaultAsync(r => r.Id == id);
+                .FirstOrDefaultAsync(r => r.Id == id,cancellationToken);
         }
 
-        public async Task<IEnumerable<RolePermission>> GetRolePermissionAsync(int roleId)
+        public async Task<IEnumerable<RolePermission>> GetRolePermissionAsync(int roleId, CancellationToken cancellationToken)
         {
-            return await context.RolePermission.AsNoTracking()
+            return await context.RolePermissions.AsNoTracking()
                 .Include(rp => rp.Permission)
                 .Where(rp => rp.RoleId == roleId)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
-        public async Task<bool> IsRegisteredRole(int roleId, string roleName)
+        public async Task<bool> IsRegisteredRoleAsync(int roleId, string roleName, CancellationToken cancellationToken)
         {
-            return await context.Roles.AnyAsync(r => r.Name.ToLower() == roleName.ToLower() && r.Id != roleId);
+            
+            return await context.Roles.AnyAsync(r => r.Name.ToLower() == roleName.ToLower() && r.Id != roleId,cancellationToken);
         }
 
-        public async Task<bool> IsRoleExistsAsync(string roleName)
+        public async Task<bool> IsRoleExistsAsync(string roleName, CancellationToken cancellationToken)
         {
-            return await context.Roles.AnyAsync(r => r.Name.ToLower() == roleName.ToLower());
+            return await context.Roles.AnyAsync(r => r.Name.ToLower() == roleName.ToLower(),cancellationToken);
         }
 
     }

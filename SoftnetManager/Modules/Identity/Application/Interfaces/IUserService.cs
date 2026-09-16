@@ -9,18 +9,18 @@ namespace SoftnetManager.Modules.Identity.Application.Interfaces
 {
     public interface IUserService
     {
-        Task<Result<TokenResponseDTO>> Login(LoginDTO loginDTO);
-        Task<Result<TokenResponseDTO>> RefreshToken(RefreshTokenRequestDTO refreshTokenRequestDTO);
+        Task<Result<TokenResponseDTO>> LoginAsync(LoginDTO loginDTO,CancellationToken cancellationToken);
+        Task<Result<TokenResponseDTO>> RefreshTokenAsync(RefreshTokenRequestDTO refreshTokenRequestDTO, CancellationToken cancellationToken);
 
-        Task<Result<UserDTO>> RegisterUser(RegisterDTO registerDTO);
-        Task<Result<UserDTO>> CreateUser(CreateUserDTO userDTO);
-        Task<Result<UserDTO>> UpdateUser(int userId, JsonPatchDocument<UpdateProfileDTO>patchDocument);
-        //Task<Result<UserDTO>> UpdateUserProfileAsync(int userId, JsonPatchDocument<UpdateProfileDTO> patchDocument);
-        Task<Result<UserDTO>> UpdateUserProfileAsync(int userId, UpdateProfileDTO updateProfileDTO);
+        Task<Result<UserDTO>> RegisterUserAsync(RegisterDTO registerDTO, CancellationToken cancellationToken);
+        Task<Result<UserDTO>> CreateUserAsync(CreateUserDTO userDTO, CancellationToken cancellationToken);
+        Task<Result<UserDTO>> UpdateUserProfileAsync(int userId,JsonPatchDocument<UpdateUserProfileDTO>jsonPatchDoc,CancellationToken cancellationToken);
 
-        Task<Result<IEnumerable<UserDTO>>> GetUsersAsync();
+        Task<Result<object>> DeleteUserAsync(int userId, CancellationToken cancellationToken);
 
-        Task<Result<bool>> ToggleUserActiveStatusAsync(ToggleActiveStatusDTO toggleActiveStatusDTO);
+        Task<Result<IEnumerable<UserDTO>>> GetUsersAsync(CancellationToken cancellationToken);
+
+        Task<Result<bool>> ToggleUserActiveStatusAsync(ToggleActiveStatusDTO toggleActiveStatusDTO, CancellationToken cancellationToken);
 
 
 

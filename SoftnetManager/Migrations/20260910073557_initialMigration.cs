@@ -8,11 +8,24 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace SoftnetManager.Migrations
 {
     /// <inheritdoc />
-    public partial class intialMigration : Migration
+    public partial class initialMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "Branches",
+                columns: table => new
+                {
+                    ID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Branches", x => x.ID);
+                });
+
             migrationBuilder.CreateTable(
                 name: "Clients",
                 columns: table => new
@@ -141,6 +154,20 @@ namespace SoftnetManager.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Users",
+                columns: table => new
+                {
+                    ID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Email = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Password = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Users", x => x.ID);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Cities",
                 columns: table => new
                 {
@@ -161,7 +188,7 @@ namespace SoftnetManager.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "RolePermission",
+                name: "RolePermissions",
                 columns: table => new
                 {
                     RoleId = table.Column<int>(type: "int", nullable: false),
@@ -169,170 +196,18 @@ namespace SoftnetManager.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RolePermission", x => new { x.RoleId, x.PermissionId });
+                    table.PrimaryKey("PK_RolePermissions", x => new { x.RoleId, x.PermissionId });
                     table.ForeignKey(
-                        name: "FK_RolePermission_Permission_PermissionId",
+                        name: "FK_RolePermissions_Permission_PermissionId",
                         column: x => x.PermissionId,
                         principalTable: "Permission",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_RolePermission_Roles_RoleId",
+                        name: "FK_RolePermissions_Roles_RoleId",
                         column: x => x.RoleId,
                         principalTable: "Roles",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Zones",
-                columns: table => new
-                {
-                    ID = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    CityID = table.Column<int>(type: "int", nullable: false),
-                    ZoneName = table.Column<string>(type: "nvarchar(max)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Zones", x => x.ID);
-                    table.ForeignKey(
-                        name: "FK_Zones_Cities_CityID",
-                        column: x => x.CityID,
-                        principalTable: "Cities",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Address",
-                columns: table => new
-                {
-                    ID = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ZoneID = table.Column<int>(type: "int", nullable: false),
-                    Line1 = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Line2 = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Line3 = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    LocationStatus = table.Column<int>(type: "int", nullable: false),
-                    UserID = table.Column<int>(type: "int", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Address", x => x.ID);
-                    table.ForeignKey(
-                        name: "FK_Address_Zones_ZoneID",
-                        column: x => x.ZoneID,
-                        principalTable: "Zones",
-                        principalColumn: "ID",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Branches",
-                columns: table => new
-                {
-                    ID = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    AddressID = table.Column<int>(type: "int", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Branches", x => x.ID);
-                    table.ForeignKey(
-                        name: "FK_Branches_Address_AddressID",
-                        column: x => x.AddressID,
-                        principalTable: "Address",
-                        principalColumn: "ID",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "UserProfiles",
-                columns: table => new
-                {
-                    ID = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    SalutationID = table.Column<int>(type: "int", nullable: true),
-                    GenderID = table.Column<int>(type: "int", nullable: true),
-                    MaritialStatusID = table.Column<int>(type: "int", nullable: true),
-                    AddressID = table.Column<int>(type: "int", nullable: true),
-                    BranchID = table.Column<int>(type: "int", nullable: true),
-                    DesignationID = table.Column<int>(type: "int", nullable: true),
-                    FirstName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    LastName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Nic = table.Column<string>(type: "nvarchar(450)", nullable: true),
-                    Dob = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ProfileImageUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedBy = table.Column<int>(type: "int", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    DeactivatedBy = table.Column<int>(type: "int", nullable: true),
-                    DeactivatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UserProfiles", x => x.ID);
-                    table.ForeignKey(
-                        name: "FK_UserProfiles_Address_AddressID",
-                        column: x => x.AddressID,
-                        principalTable: "Address",
-                        principalColumn: "ID",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_UserProfiles_Branches_BranchID",
-                        column: x => x.BranchID,
-                        principalTable: "Branches",
-                        principalColumn: "ID",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_UserProfiles_Designations_DesignationID",
-                        column: x => x.DesignationID,
-                        principalTable: "Designations",
-                        principalColumn: "ID",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_UserProfiles_Genders_GenderID",
-                        column: x => x.GenderID,
-                        principalTable: "Genders",
-                        principalColumn: "ID",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_UserProfiles_MaritialStatuses_MaritialStatusID",
-                        column: x => x.MaritialStatusID,
-                        principalTable: "MaritialStatuses",
-                        principalColumn: "ID",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_UserProfiles_Salutations_SalutationID",
-                        column: x => x.SalutationID,
-                        principalTable: "Salutations",
-                        principalColumn: "ID",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Users",
-                columns: table => new
-                {
-                    ID = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UserProfileID = table.Column<int>(type: "int", nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Password = table.Column<string>(type: "nvarchar(max)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Users", x => x.ID);
-                    table.ForeignKey(
-                        name: "FK_Users_UserProfiles_UserProfileID",
-                        column: x => x.UserProfileID,
-                        principalTable: "UserProfiles",
-                        principalColumn: "ID",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -368,6 +243,72 @@ namespace SoftnetManager.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "UserProfiles",
+                columns: table => new
+                {
+                    ID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserID = table.Column<int>(type: "int", nullable: false),
+                    SalutationID = table.Column<int>(type: "int", nullable: true),
+                    GenderID = table.Column<int>(type: "int", nullable: true),
+                    MaritialStatusID = table.Column<int>(type: "int", nullable: true),
+                    BranchID = table.Column<int>(type: "int", nullable: true),
+                    DesignationID = table.Column<int>(type: "int", nullable: true),
+                    FirstName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    LastName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Nic = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    Dob = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ProfileImageUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeactivatedBy = table.Column<int>(type: "int", nullable: true),
+                    DeactivatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserProfiles", x => x.ID);
+                    table.ForeignKey(
+                        name: "FK_UserProfiles_Branches_BranchID",
+                        column: x => x.BranchID,
+                        principalTable: "Branches",
+                        principalColumn: "ID");
+                    table.ForeignKey(
+                        name: "FK_UserProfiles_Designations_DesignationID",
+                        column: x => x.DesignationID,
+                        principalTable: "Designations",
+                        principalColumn: "ID",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_UserProfiles_Genders_GenderID",
+                        column: x => x.GenderID,
+                        principalTable: "Genders",
+                        principalColumn: "ID",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_UserProfiles_MaritialStatuses_MaritialStatusID",
+                        column: x => x.MaritialStatusID,
+                        principalTable: "MaritialStatuses",
+                        principalColumn: "ID",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_UserProfiles_Salutations_SalutationID",
+                        column: x => x.SalutationID,
+                        principalTable: "Salutations",
+                        principalColumn: "ID",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_UserProfiles_Users_UserID",
+                        column: x => x.UserID,
+                        principalTable: "Users",
+                        principalColumn: "ID",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "UserRoles",
                 columns: table => new
                 {
@@ -382,14 +323,75 @@ namespace SoftnetManager.Migrations
                         column: x => x.RoleID,
                         principalTable: "Roles",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_UserRoles_Users_UserID",
                         column: x => x.UserID,
                         principalTable: "Users",
                         principalColumn: "ID",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
+
+            migrationBuilder.CreateTable(
+                name: "Zones",
+                columns: table => new
+                {
+                    ID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CityID = table.Column<int>(type: "int", nullable: false),
+                    ZoneName = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Zones", x => x.ID);
+                    table.ForeignKey(
+                        name: "FK_Zones_Cities_CityID",
+                        column: x => x.CityID,
+                        principalTable: "Cities",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Addresses",
+                columns: table => new
+                {
+                    ID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserProfileID = table.Column<int>(type: "int", nullable: true),
+                    BranchID = table.Column<int>(type: "int", nullable: true),
+                    ZoneID = table.Column<int>(type: "int", nullable: true),
+                    Line1 = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Line2 = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Line3 = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LocationStatus = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Addresses", x => x.ID);
+                    table.ForeignKey(
+                        name: "FK_Addresses_Branches_BranchID",
+                        column: x => x.BranchID,
+                        principalTable: "Branches",
+                        principalColumn: "ID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Addresses_UserProfiles_UserProfileID",
+                        column: x => x.UserProfileID,
+                        principalTable: "UserProfiles",
+                        principalColumn: "ID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Addresses_Zones_ZoneID",
+                        column: x => x.ZoneID,
+                        principalTable: "Zones",
+                        principalColumn: "ID");
+                });
+
+            migrationBuilder.InsertData(
+                table: "Branches",
+                columns: new[] { "ID", "Name" },
+                values: new object[] { 1, "Padukka Branch" });
 
             migrationBuilder.InsertData(
                 table: "Clients",
@@ -509,29 +511,28 @@ namespace SoftnetManager.Migrations
                 });
 
             migrationBuilder.InsertData(
-                table: "Address",
-                columns: new[] { "ID", "Line1", "Line2", "Line3", "LocationStatus", "UserID", "ZoneID" },
-                values: new object[] { 1, "126 GANEGODA", "ARUKWATTA PADUKKA", "", 2, null, 10 });
-
-            migrationBuilder.InsertData(
-                table: "Branches",
-                columns: new[] { "ID", "AddressID", "Name" },
-                values: new object[] { 1, 1, "Padukka Branch" });
+                table: "Addresses",
+                columns: new[] { "ID", "BranchID", "Line1", "Line2", "Line3", "LocationStatus", "UserProfileID", "ZoneID" },
+                values: new object[] { 1, 1, "200/A GANEGODA", "ARUKWATTA PADUKKA", null, 2, null, 10 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Address_UserID",
-                table: "Address",
-                column: "UserID");
+                name: "IX_Addresses_BranchID",
+                table: "Addresses",
+                column: "BranchID",
+                unique: true,
+                filter: "[BranchID] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Address_ZoneID",
-                table: "Address",
+                name: "IX_Addresses_UserProfileID",
+                table: "Addresses",
+                column: "UserProfileID",
+                unique: true,
+                filter: "[UserProfileID] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Addresses_ZoneID",
+                table: "Addresses",
                 column: "ZoneID");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Branches_AddressID",
-                table: "Branches",
-                column: "AddressID");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Cities_ProvinceID",
@@ -566,8 +567,8 @@ namespace SoftnetManager.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_RolePermission_PermissionId",
-                table: "RolePermission",
+                name: "IX_RolePermissions_PermissionId",
+                table: "RolePermissions",
                 column: "PermissionId");
 
             migrationBuilder.CreateIndex(
@@ -576,11 +577,6 @@ namespace SoftnetManager.Migrations
                 column: "Nic",
                 unique: true,
                 filter: "[Nic] IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_UserProfiles_AddressID",
-                table: "UserProfiles",
-                column: "AddressID");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserProfiles_BranchID",
@@ -615,6 +611,12 @@ namespace SoftnetManager.Migrations
                 column: "SalutationID");
 
             migrationBuilder.CreateIndex(
+                name: "IX_UserProfiles_UserID",
+                table: "UserProfiles",
+                column: "UserID",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_UserRoles_RoleID",
                 table: "UserRoles",
                 column: "RoleID");
@@ -632,41 +634,34 @@ namespace SoftnetManager.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Users_UserProfileID",
-                table: "Users",
-                column: "UserProfileID");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Zones_CityID",
                 table: "Zones",
                 column: "CityID");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Address_Users_UserID",
-                table: "Address",
-                column: "UserID",
-                principalTable: "Users",
-                principalColumn: "ID");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Address_Users_UserID",
-                table: "Address");
+            migrationBuilder.DropTable(
+                name: "Addresses");
 
             migrationBuilder.DropTable(
                 name: "RefreshTokens");
 
             migrationBuilder.DropTable(
-                name: "RolePermission");
+                name: "RolePermissions");
 
             migrationBuilder.DropTable(
                 name: "SigningKeys");
 
             migrationBuilder.DropTable(
                 name: "UserRoles");
+
+            migrationBuilder.DropTable(
+                name: "UserProfiles");
+
+            migrationBuilder.DropTable(
+                name: "Zones");
 
             migrationBuilder.DropTable(
                 name: "Clients");
@@ -676,12 +671,6 @@ namespace SoftnetManager.Migrations
 
             migrationBuilder.DropTable(
                 name: "Roles");
-
-            migrationBuilder.DropTable(
-                name: "Users");
-
-            migrationBuilder.DropTable(
-                name: "UserProfiles");
 
             migrationBuilder.DropTable(
                 name: "Branches");
@@ -699,10 +688,7 @@ namespace SoftnetManager.Migrations
                 name: "Salutations");
 
             migrationBuilder.DropTable(
-                name: "Address");
-
-            migrationBuilder.DropTable(
-                name: "Zones");
+                name: "Users");
 
             migrationBuilder.DropTable(
                 name: "Cities");

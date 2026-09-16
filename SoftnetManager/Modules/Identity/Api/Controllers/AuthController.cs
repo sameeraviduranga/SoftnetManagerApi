@@ -28,14 +28,14 @@ namespace SoftnetManager.Modules.Identity.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login([FromBody] LoginDTO loginDTO)
+        public async Task<IActionResult> Login([FromBody] LoginDTO loginDTO,CancellationToken cancellationToken)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail(ModelState, "Invalid request body"));
             }
 
-            var result = await userService.Login(loginDTO);
+            var result = await userService.LoginAsync(loginDTO,cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -48,14 +48,14 @@ namespace SoftnetManager.Modules.Identity.Api.Controllers
         }
 
         [HttpPost("RefreshToken")]
-        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDTO requestDTO)
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDTO requestDTO, CancellationToken cancellationToken)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail(ModelState, "Invalid request body"));
             }
 
-            var result = await userService.RefreshToken(requestDTO);
+            var result = await userService.RefreshTokenAsync(requestDTO,cancellationToken);
 
             if (!result.IsSuccess)
             {

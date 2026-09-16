@@ -10,6 +10,9 @@ namespace SoftnetManager.Modules.Identity.Domain.Entities
         [Key]
         public int ID { get; set; }
 
+        public int UserID { get; set; }
+        public User User { get; set; } = null!;
+
         public int? SalutationID { get; set; }
         public Salutation? Salutation { get; set; }
 
@@ -19,9 +22,7 @@ namespace SoftnetManager.Modules.Identity.Domain.Entities
         public int? MaritialStatusID { get; set; }
         public MaritialStatus? MaritialStatus { get; set; }
 
-        public int? AddressID { get; set; }
-        public Address? Address { get; set; }
-
+        //public int? AddressID { get; set; } if this add address is the main table/remove to cascade delete
         public int? BranchID { get; set; }
         public Branch? Branch { get; set; }
 
@@ -36,7 +37,7 @@ namespace SoftnetManager.Modules.Identity.Domain.Entities
         [Phone]
         public string? PhoneNumber { get; set; }
         public string? Nic { get; set; }
-        public DateTime? Dob { get; set; }
+        public DateOnly? Dob { get; set; }
         public string? ProfileImageUrl { get; set; }
         public bool IsActive { get; set; }
         public int CreatedBy { get; set; }
@@ -45,6 +46,8 @@ namespace SoftnetManager.Modules.Identity.Domain.Entities
         public DateTime? UpdatedAt { get; set; }
         public int? DeactivatedBy { get; set; }
         public DateTime? DeactivatedAt { get; set; }
-       
+
+        public Address? Address { get; set; }//nav
+
     }
 }

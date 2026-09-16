@@ -23,47 +23,15 @@ namespace SoftnetManager.Modules.Identity.Application.Services
             this.permissionRepository = permissionRepository;
         }
 
-        public async Task<Result<RoleResponseDto>> CreateRoleAsync(CreateRoleDto createRoleDto)
+        public async Task<Result<RoleResponseDto>> CreateRoleAsync(CreateRoleDto createRoleDto,CancellationToken cancellationToken)
         {
-            if (string.IsNullOrEmpty(createRoleDto.Name))
-            {
-                return Result<RoleResponseDto>.Fail("Role name is required.");
-            }
-
-            // Check if the role already exists
-            if (await roleRepository.IsRoleExistsAsync(createRoleDto.Name))
-            {
-                return Result<RoleResponseDto>.Fail("Role already exists.");
-            }
-
-            // check if the permissions are valid
-            if (createRoleDto.Permissions == null || !createRoleDto.Permissions.Any())
-            {
-                return Result<RoleResponseDto>.Fail("At least one permission is required.");
-            }
 
             var distinctPermissions = createRoleDto.Permissions.Distinct().ToList();
-
-            //check if the permissions are valid
-            List<string> permissionErrors = new List<string>();
-
-            foreach (var permission in distinctPermissions)
-            {
-                if (!await permissionRepository.ExistsAsync(permission))
-                {
-                    permissionErrors.Add($"Permission : {permission}\n");
-                }
-            }
-
-            if (permissionErrors.Any())
-            {
-                return Result<RoleResponseDto>.Fail($"Invalid permissions:\n{string.Join("", permissionErrors)}");
-            }
 
             // Create the role
             try
             {
-                await unitOfWork.BeginTransactionAsync();
+                await unitOfWork.BeginTransactionAsync(cancellationToken);
 
                 var role = new Role
                 {
@@ -72,12 +40,12 @@ namespace SoftnetManager.Modules.Identity.Application.Services
                     RolePermissions = distinctPermissions.Select(p=>new RolePermission { PermissionId = p }).ToList(),
                 };
 
-                await unitOfWork.Roles.AddAsync(role);
-                await unitOfWork.CommitTransactionAsync();
+                unitOfWork.Roles.Add(role);
+                await unitOfWork.CommitTransactionAsync(cancellationToken);
 
                 //get role with permissions
 
-                var rolePermissions = await roleRepository.GetRolePermissionAsync(role.Id);
+                var rolePermissions = await roleRepository.GetRolePermissionAsync(role.Id,cancellationToken);
                 if (rolePermissions == null)
                 {
                     return Result<RoleResponseDto>.Fail("Failed to retrieve role permissions after creation.");
@@ -99,7 +67,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
                 if (unitOfWork.HasActiveTransaction)
                 {
-                    await unitOfWork.RollbackTransactionAsync();
+                    await unitOfWork.RollbackTransactionAsync(CancellationToken.None);
                 }
 
                 return Result<RoleResponseDto>.Fail($"An error occurred while creating the role: {ex.Message}");
@@ -109,13 +77,13 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
         }
 
-        public async Task<Result<object>> DeleteRoleAsync(int roleId)
+        public async Task<Result<object>> DeleteRoleAsync(int roleId, CancellationToken cancellationToken)
         {
             
             try
             {
-                await unitOfWork.BeginTransactionAsync();
-                var existingRole = await unitOfWork.Roles.GetRoleById(roleId);
+                await unitOfWork.BeginTransactionAsync(cancellationToken);
+                var existingRole = await unitOfWork.Roles.GetRoleByIdAsync(roleId,cancellationToken);
                 if (existingRole == null)
                 {
                     return Result<object>.Fail($"Role doesn't found");
@@ -135,7 +103,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
                 unitOfWork.Roles.Delete(existingRole);
 
-                await unitOfWork.CommitTransactionAsync();
+                await unitOfWork.CommitTransactionAsync(cancellationToken);
 
                 return Result<object>.Success($"Role deleted SuccessFully");
 
@@ -146,7 +114,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
                 if (unitOfWork.HasActiveTransaction)
                 {
-                    await unitOfWork.RollbackTransactionAsync();
+                    await unitOfWork.RollbackTransactionAsync(CancellationToken.None);
                 }
 
                 return Result<object>.Fail($"An error occurred while updating the role: {ex.Message}");
@@ -155,92 +123,80 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
         }
 
-        public async Task<Result<RoleResponseDto>> UpdateRoleAsync(UpdateRoleDto updateRoleDto)
+        public async Task<Result<IEnumerable<RoleResponseDto>>> GetAllRolesAsync(CancellationToken cancellationToken)//try catch
         {
-            if (string.IsNullOrEmpty(updateRoleDto.Name))
+            var roles = await roleRepository.GetAllAsync(cancellationToken);
+            if (roles == null)
             {
-                return Result<RoleResponseDto>.Fail("Role name is required.");
+                return Result<IEnumerable<RoleResponseDto>>.Fail("No roles found");
             }
 
-            //check if the role exists
-            if (!await roleRepository.ExistsAsync(updateRoleDto.RoleId))
+            var listOfRoles = roles.Select(r => new RoleResponseDto
             {
-                return Result<RoleResponseDto>.Fail("Role not found.");
-            }
+                RoleName = r.Name,
+                Description = r.Description,
+            });
 
-            //check newrole exists by name
-            if (await roleRepository.IsRegisteredRole(updateRoleDto.RoleId,updateRoleDto.Name))
-            {
-                return Result<RoleResponseDto>.Fail("Role name already exists.");
-            }
+            return Result<IEnumerable<RoleResponseDto>>.Success(listOfRoles);
+        }
+
+        public async Task<Result<RoleResponseDto>> UpdateRoleAsync(UpdateRoleDto updateRoleDto,CancellationToken cancellationToken)
+        {
 
             // check if the permissions are valid
             var distinctPermissions = updateRoleDto.Permissions.Distinct().ToList();
-            List<string> permissionErrors = new List<string>();
-
-            foreach (var permission in distinctPermissions)
-            {
-                if (!await permissionRepository.ExistsAsync(permission))
-                {
-                    permissionErrors.Add($"Permission : {permission}\n");
-                }
-            }
-
-            if (permissionErrors.Any())
-            {
-                return Result<RoleResponseDto>.Fail($"Invalid permissions:\n{string.Join("", permissionErrors)}");
-            }
-
-            //new permissions
-
             try
             {
-                await unitOfWork.BeginTransactionAsync();
+                await unitOfWork.BeginTransactionAsync(cancellationToken);
 
-                var existingRole = await unitOfWork.Roles.GetRoleById(updateRoleDto.RoleId);
+                var existingRole = await unitOfWork.Roles.GetRoleByIdAsync(updateRoleDto.RoleId,cancellationToken);
 
                 if (existingRole != null)
                 {
-
-                    var existingRolePermissions = existingRole.RolePermissions.Select(rp => rp.PermissionId).ToList();
-
-                    // existing වල නැති අලුත් ඒවා (Add කිරීමට)
-                    var addNewPermisions = distinctPermissions.Except(existingRolePermissions).ToList();
-
-                    var removeOldPermission = existingRolePermissions.Except(distinctPermissions).ToList();
-
-
-                    existingRole.Name = updateRoleDto.Name;
-                    existingRole.Description = updateRoleDto.Description;
-
-                    // Remove old permissions
-                    if (removeOldPermission != null && removeOldPermission.Any())
-                    {
-                        foreach (var permission in removeOldPermission)
-                        {
-                            //existingRole.RolePermissions.Remove(new RolePermission { PermissionId = permission });this doenst work
-                            var rolePermission = existingRole.RolePermissions.FirstOrDefault(rp => rp.PermissionId == permission);
-                            existingRole.RolePermissions.Remove(rolePermission!);
-                        }
-                    }
-
-                    // Add new permissions
-                    if (addNewPermisions.Any())
-                    {
-                        foreach (var permission in addNewPermisions)
-                        {
-                            existingRole.RolePermissions.Add(new RolePermission { PermissionId = permission });
-                        }
-                    }
-
-                    unitOfWork.Roles.Update(existingRole);
-                    await unitOfWork.CommitTransactionAsync();
-
+                    return Result<RoleResponseDto>.Fail("Role not found.");
                 }
+
+                var existingRolePermissions = existingRole!.RolePermissions.Select(rp => rp.PermissionId).ToList();
+
+                // existing වල නැති අලුත් ඒවා (Add කිරීමට)
+                var addNewPermisions = distinctPermissions.Except(existingRolePermissions).ToList();
+
+                var removeOldPermission = existingRolePermissions.Except(distinctPermissions).ToList();
+
+
+                existingRole.Name = updateRoleDto.Name;
+                existingRole.Description = updateRoleDto.Description;
+
+                // Remove old permissions
+                if (removeOldPermission != null && removeOldPermission.Any())
+                {
+                    foreach (var permission in removeOldPermission)
+                    {
+                        //existingRole.RolePermissions.Remove(new RolePermission { PermissionId = permission });this doenst work
+                        var rolePermission = existingRole.RolePermissions.FirstOrDefault(rp => rp.PermissionId == permission);
+                        existingRole.RolePermissions.Remove(rolePermission!);
+
+                        //delete at once
+                    }
+                }
+
+                // Add new permissions
+                if (addNewPermisions.Any())
+                {
+                    foreach (var permission in addNewPermisions)
+                    {
+                        existingRole.RolePermissions.Add(new RolePermission { PermissionId = permission });
+                    }
+                }
+
+                unitOfWork.Roles.Update(existingRole);
+                await unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                var rolePermissions = await roleRepository.GetRolePermissionAsync(existingRole.Id!, cancellationToken);
 
                 //get role with permissions
 
-                var rolePermissions = await roleRepository.GetRolePermissionAsync(existingRole.Id);
+
                 if (rolePermissions == null)
                 {
                     return Result<RoleResponseDto>.Fail("Failed to retrieve role permissions after creation.");
@@ -262,7 +218,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
             {
                 if (unitOfWork.HasActiveTransaction)
                 {
-                    await unitOfWork.RollbackTransactionAsync();
+                    await unitOfWork.RollbackTransactionAsync(CancellationToken.None);
                 }
 
                 return Result<RoleResponseDto>.Fail($"An error occurred while updating the role: {ex.Message}");

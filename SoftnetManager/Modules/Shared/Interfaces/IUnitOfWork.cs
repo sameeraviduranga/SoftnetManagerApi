@@ -13,10 +13,10 @@ namespace SoftnetManager.Modules.Shared.Interfaces
 
         bool HasActiveTransaction { get; }
         int SaveChanges();
-        Task<int> SaveChangesAsync();
-        Task<IDbContextTransaction> BeginTransactionAsync();
-        Task CommitTransactionAsync();
-        Task RollbackTransactionAsync();
+        Task<int> SaveChangesAsync(CancellationToken cancellationToken);
+        Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken);
+        Task CommitTransactionAsync(CancellationToken cancellationToken);
+        Task RollbackTransactionAsync(CancellationToken cancellationToken);
 
     }
 }

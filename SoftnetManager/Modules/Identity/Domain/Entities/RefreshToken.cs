@@ -8,15 +8,15 @@ namespace SoftnetManager.Modules.Identity.Domain.Entities
         [Key]
         public int Id { get; set; }
         [Required]
-        public string Token { get; set; }
+        public string Token { get; set; } = string.Empty;
         [Required]
         public int UserId { get; set; }
         [ForeignKey("UserId")]
-        public User User { get; set; }
+        public User User { get; set; } = null!;
         [Required]
         public int ClientId { get; set; }
         [ForeignKey("ClientId")]
-        public Client Client { get; set; }
+        public Client Client { get; set; } = null!;
         [Required]
         public bool IsRevoked { get; set; } = false;
         [Required]

@@ -19,51 +19,53 @@ namespace SoftnetManager.Modules.Shared.Database
                .HasIndex(u => u.Email)
                .IsUnique();
 
-            modelBuilder.Entity<User>()
-                .HasOne(u => u.UserProfile)
-                .WithOne()
-                .HasForeignKey<User>(u => u.UserProfileID)
-                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UserProfile>()
+                .HasOne(up=>up.User)
+                .WithOne(u=>u.UserProfile)
+                .HasForeignKey<UserProfile>(up=>up.UserID)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<UserProfile>()
                 .HasIndex(u => u.Nic)
                 .IsUnique()
                 .HasFilter("[Nic] IS NOT NULL");
 
+            modelBuilder.Entity<Address>()//dependant entity
+                .HasOne(a => a.UserProfile)
+                .WithOne(u => u.Address)
+                .HasForeignKey<Address>(a => a.UserProfileID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Address>()//dependant entity
+                .HasOne(a=>a.Branch)
+                .WithOne(b=>b.Address)
+                .HasForeignKey<Address>(a=>a.BranchID)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+
+            modelBuilder.Entity<UserProfile>()//userprofile is dependan/child
+                .HasOne(up => up.Salutation)// Salutation is parent
+                .WithMany()
+                .HasForeignKey(up => up.SalutationID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
             modelBuilder.Entity<UserProfile>()
-                .HasOne(u=>u.Branch)
-                .WithMany(b=>b.users)
-                .HasForeignKey(u=>u.BranchID)
+                .HasOne(up => up.Gender)
+                .WithMany()
+                .HasForeignKey(up => up.GenderID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<UserProfile>()
-                .HasOne(u => u.Address)
+                .HasOne(up => up.MaritialStatus)
                 .WithMany()
-                .HasForeignKey(u => u.AddressID)
+                .HasForeignKey(up => up.MaritialStatusID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<UserProfile>()
-                .HasOne(u => u.Salutation)
+                .HasOne(up => up.Designation)
                 .WithMany()
-                .HasForeignKey(u => u.SalutationID)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<UserProfile>()
-                .HasOne(u => u.Gender)
-                .WithMany()
-                .HasForeignKey(u => u.GenderID)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<UserProfile>()
-                .HasOne(u => u.MaritialStatus)
-                .WithMany()
-                .HasForeignKey(u => u.MaritialStatusID)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<UserProfile>()
-                .HasOne(u => u.Designation)
-                .WithMany()
-                .HasForeignKey(u => u.DesignationID)
+                .HasForeignKey(up => up.DesignationID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<RefreshToken>()
@@ -86,7 +88,8 @@ namespace SoftnetManager.Modules.Shared.Database
             modelBuilder.Entity<UserRole>()
                 .HasOne(ur => ur.User)
                 .WithMany(u => u.UserRoles)
-                .HasForeignKey(ur => ur.UserID);
+                .HasForeignKey(ur => ur.UserID)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<UserRole>()
                 .HasOne(ur => ur.Role)
@@ -94,12 +97,6 @@ namespace SoftnetManager.Modules.Shared.Database
                 .HasForeignKey(ur => ur.RoleID)
                 .OnDelete(DeleteBehavior.Restrict); 
 
-
-            modelBuilder.Entity<Role>().HasData(
-                new Role { Id = 1, Name = "Admin", Description = "Admin Role" },
-                new Role { Id = 2, Name = "Editor", Description = " Editor Role" },
-                new Role { Id = 3, Name = "User", Description = "User Role" }
-            );
 
             modelBuilder.Entity<RefreshToken>()
                 .HasOne(rt => rt.User)
@@ -121,15 +118,23 @@ namespace SoftnetManager.Modules.Shared.Database
                     rp.PermissionId
                 });
 
-            modelBuilder.Entity<RolePermission>()
+            modelBuilder.Entity<RolePermission>()//child
                 .HasOne(rp => rp.Role)
                 .WithMany(r => r.RolePermissions)
-                .HasForeignKey(rp => rp.RoleId);
+                .HasForeignKey(rp => rp.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<RolePermission>()
                 .HasOne(rp=>rp.Permission)
                 .WithMany(p=>p.RolePermissions)
-                .HasForeignKey(rp => rp.PermissionId);
+                .HasForeignKey(rp => rp.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Role>().HasData(
+               new Role { Id = 1, Name = "Admin", Description = "Admin Role" },
+               new Role { Id = 2, Name = "Editor", Description = " Editor Role" },
+               new Role { Id = 3, Name = "User", Description = "User Role" }
+           );
 
             modelBuilder.Entity<Client>().HasData(
                 new Client
@@ -215,7 +220,7 @@ namespace SoftnetManager.Modules.Shared.Database
 
 
             modelBuilder.Entity<Gender>().HasData(
-                new Gender {ID=1,GenderName="Male"},
+                new Gender { ID = 1, GenderName="Male"},
                 new Gender { ID = 2, GenderName ="FeMale"},
                 new Gender { ID = 3, GenderName ="Other"}
              );
@@ -277,18 +282,17 @@ namespace SoftnetManager.Modules.Shared.Database
 
             modelBuilder.Entity<Address>().HasData(
 
-               new Address { ID = 1,ZoneID=10, Line1 = "126 GANEGODA",Line2="ARUKWATTA PADUKKA",LocationStatus = LocationStatus.Branch }
-               );
+               new Address { ID = 1, ZoneID = 10,BranchID=1, Line1 = "200/A GANEGODA", Line2 = "ARUKWATTA PADUKKA", LocationStatus = LocationStatus.Branch }
+             );
 
             modelBuilder.Entity<Branch>().HasData(
-                
-                new Branch { ID = 1,AddressID = 1,Name = "Padukka Branch"}
+                new Branch { ID = 1,Name = "Padukka Branch"}
              );
 
             modelBuilder.Entity<Designation>().HasData(
 
-               new Designation { ID = 1,DesignationName="Feild Development Officer",ShortName = "FDO" },
-               new Designation { ID = 2,DesignationName="Customer Relationship Officer",ShortName = "CRO" },
+               new Designation { ID = 1, DesignationName="Feild Development Officer",ShortName = "FDO" },
+               new Designation { ID = 2, DesignationName="Customer Relationship Officer",ShortName = "CRO" },
                new Designation { ID = 3, DesignationName = "Branch Manager", ShortName = "BM" }
             );
 
@@ -310,7 +314,7 @@ namespace SoftnetManager.Modules.Shared.Database
         public DbSet<Role> Roles { get; set; }
         public DbSet<Client> Clients { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
-        public DbSet<RolePermission> RolePermission { get; set; }
+        public DbSet<RolePermission> RolePermissions { get; set; }
         public DbSet<SigningKey> SigningKeys { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<Province> Provinces { get; set; }
@@ -321,7 +325,8 @@ namespace SoftnetManager.Modules.Shared.Database
         public DbSet<Gender> Genders { get; set; }
         public DbSet<MaritialStatus> MaritialStatuses { get; set; }
         public DbSet<Salutation> Salutations { get; set; }
-        public DbSet<Address> Address { get; set; }
+        public DbSet<Address> Addresses { get; set; }
+        public DbSet<Permission> Permission { get; set; }
 
     }
 }

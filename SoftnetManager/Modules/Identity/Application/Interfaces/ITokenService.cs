@@ -4,7 +4,7 @@ namespace SoftnetManager.Modules.Identity.Application.Interfaces
 {
     public interface ITokenService
     {
-        string GenerateJwtToken(User user,Client client);
+        Task<string> GenerateJwtTokenAsync(User user,Client client, CancellationToken cancellationToken);
         string GenerateRefreshToken();
         string HashToken(string refreshToken);
 

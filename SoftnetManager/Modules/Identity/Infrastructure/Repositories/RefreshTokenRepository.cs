@@ -14,13 +14,13 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
         {
             _context = context;
         }
-        public async Task AddAsync(RefreshToken token)
+        public async Task AddAsync(RefreshToken token, CancellationToken cancellationToken)
         {
             await _context.RefreshTokens.AddAsync(token);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task<RefreshToken?> GetStoredRefreshTokenAsync(string hashedToken, string clientId)
+        public async Task<RefreshToken?> GetStoredRefreshTokenAsync(string hashedToken, string clientId, CancellationToken cancellationToken)
         {
             return await _context.RefreshTokens
                 .Include(rt => rt.User)
@@ -33,19 +33,19 @@ namespace SoftnetManager.Modules.Identity.Infrastructure.Repositories
 
                 .Include(rt => rt.Client)
 
-                .FirstOrDefaultAsync(rt=>rt.Token == hashedToken && rt.Client.ClientId == clientId);
+                .FirstOrDefaultAsync(rt=>rt.Token == hashedToken && rt.Client.ClientId == clientId,cancellationToken);
 
         }
 
-        public async Task RevokedRefreshTokenAsync(RefreshToken refreshToken)
+        public async Task RevokedRefreshTokenAsync(RefreshToken refreshToken, CancellationToken cancellationToken)
         {
-            var token = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Id == refreshToken.Id);
+            var token = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Id == refreshToken.Id,cancellationToken);
             if (token != null)
             {
                 token.IsRevoked = true;
                 token.RevokedAt = DateTime.UtcNow;
 
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync(cancellationToken);
             }
 
         }

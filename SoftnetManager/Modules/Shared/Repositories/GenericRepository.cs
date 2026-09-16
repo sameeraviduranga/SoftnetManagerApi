@@ -14,9 +14,9 @@ namespace SoftnetManager.Modules.Shared.Repositories
             _dbContext = dbContext;
             _dbset = _dbContext.Set<T>();
         }
-        public async Task AddAsync(T entity)
+        public void Add(T entity)
         {
-            await _dbset.AddAsync(entity);
+            _dbset.Add(entity);//add entity to change tracker
         }
 
         public void Delete(T entity)
@@ -24,30 +24,30 @@ namespace SoftnetManager.Modules.Shared.Repositories
             _dbset.Remove(entity);
         }
 
-        public async Task<bool> ExistsAsync(int id)
+        public async Task<bool> ExistsAsync(int id, CancellationToken cancellationToken)
         {
-            return await GetByIdAsync(id) != null;
+            return await GetByIdAsync(id,cancellationToken) != null;
         }
 
-        public async Task<IEnumerable<T>> GetAllAsync()
+        public async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken)
         {
-            return await _dbset.AsNoTracking().ToListAsync();
+            return await _dbset.AsNoTracking().ToListAsync(cancellationToken);
         }
 
-        public async Task<T?> GetByIdAsync(int id)
+        public async Task<T?> GetByIdAsync(int id,CancellationToken cancellationToken)
         {
-            return await _dbset.FindAsync(id);
+            return await _dbset.FindAsync(id,cancellationToken);
         }
 
         //not used in this project, but can be used in other projects that use this generic repository
-        public async Task<T?> GetByNameAsync(string name)
+        public async Task<T?> GetByNameAsync(string name, CancellationToken cancellationToken)
         {
-            return await _dbset.FirstOrDefaultAsync(e => EF.Property<string>(e, "Name") == name);
+            return await _dbset.FirstOrDefaultAsync(e => EF.Property<string>(e, "Name") == name,cancellationToken);
         }
 
-        public async Task SaveAsync()//not used in this project, but can be used in other projects that use this generic repository
+        public async Task SaveAsync(CancellationToken cancellationToken)//not used in this project, but can be used in other projects that use this generic repository
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         public void Update(T entity)

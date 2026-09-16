@@ -20,9 +20,9 @@ namespace softnetmanager.modules.identity.application.services
         }
 
 
-        public string GenerateJwtToken(User user, Client client)
+        public async Task<string> GenerateJwtTokenAsync(User user, Client client,CancellationToken cancellationToken)
         {
-            var signingkey = _userRepository.GetActiveSigningKey();
+            var signingkey = await _userRepository.GetActiveSigningKeyAsync(cancellationToken);
             if (signingkey == null)
             {
                 throw new Exception("no active signing key found.");
@@ -42,15 +42,15 @@ namespace softnetmanager.modules.identity.application.services
                 var creds = new SigningCredentials(rsasecuritykey, SecurityAlgorithms.RsaSha256);
 
                 var claims = new List<Claim>
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.ID.ToString()),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(JwtRegisteredClaimNames.Name, user.UserProfile.FirstName),
-                new Claim("nameidentifier", user.Email),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                {
+                    new Claim(JwtRegisteredClaimNames.Sub, user.ID.ToString()),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                    new Claim(JwtRegisteredClaimNames.Name, user.UserProfile.FirstName),
+                    new Claim("nameidentifier", user.Email),
+                    new Claim(JwtRegisteredClaimNames.Email, user.Email),
 
 
-            };
+                };
 
                 foreach (var userrole in user.UserRoles)
                 {

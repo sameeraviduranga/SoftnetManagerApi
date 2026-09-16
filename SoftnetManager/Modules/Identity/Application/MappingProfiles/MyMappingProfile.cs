@@ -14,58 +14,117 @@ namespace SoftnetManager.Modules.Identity.Application.MappingProfiles
 
         public MyMappingProfile()
         {
-            //Create address to addressDto
-
-            CreateMap<CreateAddressDTO, Address>();
-            CreateMap<Address, AddressDTO>()
-                .ForMember(dest => dest.ZoneName, opt => opt.MapFrom(src => src.Zone != null? src.Zone.ZoneName:null))
-                .ForMember(dest => dest.Location, opt => opt.MapFrom(src => src.LocationStatus.ToString()));
-
-            CreateMap<User, UserDTO>()
-                .ForMember(dest=>dest.UserProfile,opt=>opt.MapFrom(src=>src.UserProfile))
-                .ForMember(dest=>dest.UserRoles, opt => opt.MapFrom(src=>src.UserRoles != null?src.UserRoles.Where(ur=>ur.Role != null).Select(ur=>ur.Role.Name).ToList():new List<string>()));
-
-            CreateMap<User, UserProfileDTO>();
-
-            CreateMap<UserProfile, UserProfileDTO>()
-                .ForMember(dest => dest.Salutation, opt => opt.MapFrom(src => src.Salutation != null? src.Salutation.SalutationName:null))
-                .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.Gender != null? src.Gender.GenderName:null))
-                .ForMember(dest => dest.MaritialStatus, opt => opt.MapFrom(src => src.MaritialStatus != null?src.MaritialStatus.Status:null))
-                .ForMember(dest => dest.Branch, opt => opt.MapFrom(src => src.Branch != null? src.Branch.Name:null))
-                .ForMember(dest => dest.Designation, opt => opt.MapFrom(src => src.Designation != null? src.Designation.DesignationName:null))
-                .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.Dob.HasValue? src.Dob.Value.ToString("yyyy-MM-dd"):null));
-
-            
-
-            CreateMap<RegisterDTO, UserProfile>()
-                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
-                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.Now));
 
             CreateMap<RegisterDTO, User>()
+                .ForMember(dest=>dest.Email,opt=>opt.MapFrom(src=>src.Email.ToLower().Trim()))
                 .ForMember(dest => dest.UserProfile, opt => opt.MapFrom(src => src));
 
+            CreateMap<RegisterDTO, UserProfile>()
+                .ForMember(dest=>dest.FirstName,opt=>opt.ConvertUsing<TitleCaseConverter,string>(src=>src.FirstName))
+                .ForMember(dest=>dest.LastName,opt=>opt.ConvertUsing<TitleCaseConverter,string>(src=>src.LastName))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow));
 
 
-            CreateMap<UpdateProfileDTO, UserProfile>()
-                .ForMember(dest=>dest.Address,opt=>opt.MapFrom(src => src.Address))
-                .ForMember(dest=>dest.UpdatedAt,opt=>opt.MapFrom(src => DateTime.UtcNow))
-                .ReverseMap()
-                .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Address));
+            CreateMap<User, UserDTO>()
+                .ForMember(dest => dest.UserRoles, opt => opt.MapFrom(src => src.UserRoles != null ? src.UserRoles.Where(ur => ur.Role != null).Select(ur => ur.Role.Name).ToList():new List<string>()));
+            //.ForMember(dest=>dest.UserProfile,opt=>opt.MapFrom(src=>src.UserProfile)) no need to explicitly
 
-            //creatMap to  address
+
+            CreateMap<UserProfile, UserProfileDTO>()
+                .ForMember(dest => dest.Salutation, opt => opt.MapFrom(src => src.Salutation != null ? src.Salutation.SalutationName : null))
+                .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.Gender != null ? src.Gender.GenderName : null))
+                .ForMember(dest => dest.MaritialStatus, opt => opt.MapFrom(src => src.MaritialStatus != null ? src.MaritialStatus.Status : null))
+                .ForMember(dest => dest.Branch, opt => opt.MapFrom(src => src.Branch != null ? src.Branch.Name : null))
+                .ForMember(dest => dest.Designation, opt => opt.MapFrom(src => src.Designation != null ? src.Designation.DesignationName : null))
+                .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.Dob.HasValue ? src.Dob.Value.ToString("yyyy-MM-dd") : null));
+
+
+
+            CreateMap<Address, AddressDTO>()
+                .ForMember(dest => dest.ZoneName, opt => opt.MapFrom(src => src.Zone != null?src.Zone.ZoneName:null))
+                .ForMember(dest => dest.Location, opt => opt.MapFrom(src => src.LocationStatus));
+
+            CreateMap<CreateUserDTO, User>()
+                .ForMember(dest=>dest.UserProfile,opt=>opt.MapFrom(src=>src.UserProfileDto))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email.Trim().ToLower()));
+
+            CreateMap<CreateUserProfileDTO, UserProfile>()
+                .ForMember(dest => dest.FirstName, opt => opt.ConvertUsing<TitleCaseConverter, string>(src => src.FirstName))
+                .ForMember(dest => dest.LastName, opt => opt.ConvertUsing<TitleCaseConverter, string>(src => src.LastName??string.Empty))
+                .ForMember(dest => dest.Nic, opt => opt.MapFrom(src => src.Nic.ToUpper().Trim()))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
+                .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.AddressDto));
 
             CreateMap<CreateAddressDTO, Address>()
+                .ForMember(dest => dest.Line1, opt => opt.ConvertUsing<TitleCaseConverter, string>(src => src.Line1))
+                .ForMember(dest => dest.Line2, opt => opt.ConvertUsing<TitleCaseConverter, string>(src => src.Line2))
+                .ForMember(dest => dest.Line3, opt => opt.ConvertUsing<TitleCaseConverter, string>(src => src.Line3!))
                 .ReverseMap();
 
 
-            //create user
-            CreateMap<CreateUserDTO, User>()
-                .ForMember(dest => dest.UserProfile, opt => opt.MapFrom(src => src.ProfileDTO));
+            //update userprofile
+            CreateMap<UpdateUserProfileDTO, UserProfile>()
+                .ForMember(dest => dest.FirstName, opt => opt.ConvertUsing<TitleCaseConverter, string>(src => src.FirstName))
+                .ForMember(dest => dest.LastName, opt => opt.ConvertUsing<TitleCaseConverter, string>(src => src.LastName))
+                .ForMember(dest => dest.Nic, opt => opt.MapFrom(src => src.Nic.ToUpper().Trim()))
+                .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
+                .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.AddressDto))
+                .ReverseMap();
 
-            CreateMap<CreateUserProfileDTO,UserProfile>()
-                .ForMember(dest=>dest.Address,opt=>opt.MapFrom(src=>src.AddressDTO))
-                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
-                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.Now));
+
+
+
+
+
+            //Create address to addressDto
+
+            //CreateMap<CreateAddressDTO, Address>();
+            //CreateMap<Address, AddressDTO>()
+            //    .ForMember(dest => dest.ZoneName, opt => opt.MapFrom(src => src.Zone != null? src.Zone.ZoneName:null))
+            //    .ForMember(dest => dest.Location, opt => opt.MapFrom(src => src.LocationStatus.ToString()));
+
+            //CreateMap<User, UserDTO>()
+            //    .ForMember(dest=>dest.UserProfile,opt=>opt.MapFrom(src=>src.UserProfile))
+            //    .ForMember(dest=>dest.UserRoles, opt => opt.MapFrom(src=>src.UserRoles != null?src.UserRoles.Where(ur=>ur.Role != null).Select(ur=>ur.Role.Name).ToList():new List<string>()));
+
+            //CreateMap<User, UserProfileDTO>();
+
+            //CreateMap<UserProfile, UserProfileDTO>()
+            //    .ForMember(dest => dest.Salutation, opt => opt.MapFrom(src => src.Salutation != null? src.Salutation.SalutationName:null))
+            //    .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.Gender != null? src.Gender.GenderName:null))
+            //    .ForMember(dest => dest.MaritialStatus, opt => opt.MapFrom(src => src.MaritialStatus != null?src.MaritialStatus.Status:null))
+            //    .ForMember(dest => dest.Branch, opt => opt.MapFrom(src => src.Branch != null? src.Branch.Name:null))
+            //    .ForMember(dest => dest.Designation, opt => opt.MapFrom(src => src.Designation != null? src.Designation.DesignationName:null))
+            //    .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.Dob.HasValue? src.Dob.Value.ToString("yyyy-MM-dd"):null));
+
+
+
+
+
+
+
+            //CreateMap<UpdateProfileDTO, UserProfile>()
+            //    .ForMember(dest=>dest.Address,opt=>opt.MapFrom(src => src.Address))
+            //    .ForMember(dest=>dest.UpdatedAt,opt=>opt.MapFrom(src => DateTime.UtcNow))
+            //    .ReverseMap()
+            //    .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Address));
+
+            ////creatMap to  address
+
+            //CreateMap<CreateAddressDTO, Address>()
+            //    .ReverseMap();
+
+
+            ////create user
+            //CreateMap<CreateUserDTO, User>()
+            //    .ForMember(dest => dest.UserProfile, opt => opt.MapFrom(src => src.ProfileDTO));
+
+            //CreateMap<CreateUserProfileDTO,UserProfile>()
+            //    .ForMember(dest=>dest.Address,opt=>opt.MapFrom(src=>src.AddressDTO))
+            //    .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
+            //    .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.Now));
 
         }
     }

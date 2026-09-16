@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using FluentValidation;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
@@ -12,6 +13,7 @@ using SoftnetManager.Modules.Identity.Domain.Entities;
 using SoftnetManager.Modules.Identity.Domain.Interfaces;
 using SoftnetManager.Modules.Shared.Interfaces;
 using System.ComponentModel.DataAnnotations;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -27,8 +29,10 @@ namespace SoftnetManager.Modules.Identity.Application.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IUnitOfWork unitOfWork;
         private readonly ICurrentUserService currentUser;
+        private readonly IRoleRepository roleRepository;
+        private readonly IServiceProvider serviceProvider;
 
-        public UserService(IUserRepository userRepository, ITokenService tokenService, IRefreshTokenRepository refreshTokenRepository, IFileStorageService fileStorageService, IMapper mapper, IHttpContextAccessor httpContextAccessor, IUnitOfWork unitOfWork, ICurrentUserService currentUser)
+        public UserService(IUserRepository userRepository, ITokenService tokenService, IRefreshTokenRepository refreshTokenRepository, IFileStorageService fileStorageService, IMapper mapper, IHttpContextAccessor httpContextAccessor, IUnitOfWork unitOfWork, ICurrentUserService currentUser,IRoleRepository roleRepository,IServiceProvider serviceProvider)
         {
             this.userRepository = userRepository;
             this.tokenService = tokenService;
@@ -38,11 +42,13 @@ namespace SoftnetManager.Modules.Identity.Application.Services
             this.httpContextAccessor = httpContextAccessor;
             this.unitOfWork = unitOfWork;
             this.currentUser = currentUser;
+            this.roleRepository = roleRepository;
+            this.serviceProvider = serviceProvider;
         }
 
-        public async Task<Result<IEnumerable<UserDTO>>> GetUsersAsync()
+        public async Task<Result<IEnumerable<UserDTO>>> GetUsersAsync(CancellationToken cancellationToken)
         {
-            var users = await userRepository.GetAllUsersAsync();
+            var users = await userRepository.GetAllUsersAsync(cancellationToken);
             var userDTOs = mapper.Map<IEnumerable<UserDTO>>(users);
 
             if (userDTOs == null)
@@ -53,15 +59,15 @@ namespace SoftnetManager.Modules.Identity.Application.Services
             return Result<IEnumerable<UserDTO>>.Success(userDTOs);
         }
 
-        public async Task<Result<TokenResponseDTO>> Login(LoginDTO loginDTO)
+        public async Task<Result<TokenResponseDTO>> LoginAsync(LoginDTO loginDTO,CancellationToken cancellationToken)
         {
-            var client = await userRepository.GetClientByIdAsync(loginDTO.ClientId);
+            var client = await userRepository.GetClientByIdAsync(loginDTO.ClientId,cancellationToken);
             if (client == null)
             {
                 return Result<TokenResponseDTO>.Fail("Invalid Client Credentials");
             }
 
-            var user = await userRepository.GetUserByEmailAsync(loginDTO.Email);
+            var user = await userRepository.GetUserByEmailAsync(loginDTO.Email,cancellationToken);
             if (user == null)
             {
                 return Result<TokenResponseDTO>.Fail("Invalid credentials.");
@@ -74,7 +80,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
                 return Result<TokenResponseDTO>.Fail("Invalid credentials.");
             }
 
-            var token = tokenService.GenerateJwtToken(user, client);
+            var token = await tokenService.GenerateJwtTokenAsync(user, client,cancellationToken);
 
             var refreshToken = tokenService.GenerateRefreshToken();
             var hashedRefreshToken = tokenService.HashToken(refreshToken);
@@ -90,7 +96,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
             };
 
-            await refreshTokenRepository.AddAsync(newRefreshToken);
+            await refreshTokenRepository.AddAsync(newRefreshToken,cancellationToken);
 
             return Result<TokenResponseDTO>.Success(new TokenResponseDTO
             {
@@ -100,13 +106,13 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
         }
 
-        public async Task<Result<TokenResponseDTO>> RefreshToken(RefreshTokenRequestDTO refreshTokenRequestDTO)
+        public async Task<Result<TokenResponseDTO>> RefreshTokenAsync(RefreshTokenRequestDTO refreshTokenRequestDTO, CancellationToken cancellationToken)
         {
             var refreshToken = refreshTokenRequestDTO.RefreshToken;
             var clientId = refreshTokenRequestDTO.ClientId;
 
 
-            var storedRefreshToken = await refreshTokenRepository.GetStoredRefreshTokenAsync(tokenService.HashToken(refreshToken), clientId);
+            var storedRefreshToken = await refreshTokenRepository.GetStoredRefreshTokenAsync(tokenService.HashToken(refreshToken), clientId,cancellationToken);
 
             if (storedRefreshToken == null)
             {
@@ -126,12 +132,12 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
             //remove old token
 
-            await refreshTokenRepository.RevokedRefreshTokenAsync(storedRefreshToken);
+            await refreshTokenRepository.RevokedRefreshTokenAsync(storedRefreshToken,cancellationToken);
 
             var user = storedRefreshToken.User;
             var client = storedRefreshToken.Client;
 
-            var newAccessToken = tokenService.GenerateJwtToken(user, client);
+            var newAccessToken = await tokenService.GenerateJwtTokenAsync(user, client,cancellationToken);
             var newRefreshToken = tokenService.GenerateRefreshToken();
 
             var hashedRefreshToken = tokenService.HashToken(newRefreshToken);
@@ -147,7 +153,7 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
             };
 
-            await refreshTokenRepository.AddAsync(newRefreshTokenEntity);
+            await refreshTokenRepository.AddAsync(newRefreshTokenEntity,cancellationToken);
 
             return Result<TokenResponseDTO>.Success(new TokenResponseDTO
             {
@@ -159,73 +165,58 @@ namespace SoftnetManager.Modules.Identity.Application.Services
 
         }
 
-        public async Task<Result<UserDTO>> RegisterUser(RegisterDTO registerDTO)
+        public async Task<Result<UserDTO>> RegisterUserAsync(RegisterDTO registerDTO,CancellationToken cancellationToken)
         {
+
+            var user = mapper.Map<User>(registerDTO);
+
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(registerDTO.Password);
+
+            user.Password = hashedPassword;
+            //user.UserProfile.CreatedBy = 1; null
+
+
             try
             {
-                var emailExists = await userRepository.IsEmailExists(registerDTO.Email);
-                if (emailExists)
+                await unitOfWork.BeginTransactionAsync(cancellationToken);
+
+                unitOfWork.Users.Add(user);
+                user.UserRoles.Add(new UserRole { RoleID = 1 });
+
+                await unitOfWork.CommitTransactionAsync(cancellationToken);
+                
+                //get user
+                var createdUser = await userRepository.GetUserByIdAsync(user.ID,cancellationToken);
+                if (createdUser == null)
                 {
-                    return Result<UserDTO>.Fail("Email already registered.");
+                    return Result<UserDTO>.Fail("Created User Not found");
                 }
+                var userDto = mapper.Map<UserDTO>(createdUser);
 
-                var user = mapper.Map<User>(registerDTO);
-
-                await unitOfWork.BeginTransactionAsync();
-
-                //unitOfWork.Users.CreateUserProfileAsync(user.UserProfile);
-
-                //await userRepository.CreateUserProfileAsync(user.UserProfile);
-
-                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(registerDTO.Password);
-
-                user.Password = hashedPassword;
-                user.UserProfile.CreatedBy = 1;
-
-
-
-                //unitOfWork.Users.CreateUserAsync(user);
-                await unitOfWork.Users.AddAsync(user);
-
-                var role = await unitOfWork.Users.GetRole("User");
-                if (role == null)
-                {
-                    return Result<UserDTO>.Fail("Role Not Found");
-                }
-                await unitOfWork.Users.AssignRoleAsync(user, role);
-
-                //another solution to save userrole
-                //user.UserRoles.Add(new UserRole
-                //{
-                //    User = user,
-                //    Role = role
-                //});
-
-
-
-                await unitOfWork.CommitTransactionAsync();//commit transaction
-
-                var userDto = mapper.Map<UserDTO>(user);
-                //need mapping
                 return Result<UserDTO>.Success(userDto);
+
             }
             catch (Exception ex)
             {
-                await unitOfWork.RollbackTransactionAsync();
+
+                if (unitOfWork.HasActiveTransaction)
+                {
+                    await unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+                }
+
                 return Result<UserDTO>.Fail(ex.Message);
             }
 
-
         }
 
-        public async Task<Result<bool>> ToggleUserActiveStatusAsync(ToggleActiveStatusDTO toggleActiveStatusDTO)
+        public async Task<Result<bool>> ToggleUserActiveStatusAsync(ToggleActiveStatusDTO toggleActiveStatusDTO, CancellationToken cancellationToken)
         {
             try
             {
                 var userId = currentUser.UserID;
 
-                await unitOfWork.BeginTransactionAsync();
-                var existingUser = await unitOfWork.Users.GetUserByIdAsync(toggleActiveStatusDTO.UserId);
+                await unitOfWork.BeginTransactionAsync(cancellationToken);
+                var existingUser = await unitOfWork.Users.GetUserByIdAsync(toggleActiveStatusDTO.UserId,cancellationToken);
 
 
                 if (existingUser == null || existingUser.UserProfile == null)
@@ -239,376 +230,141 @@ namespace SoftnetManager.Modules.Identity.Application.Services
                 existingUser.UserProfile.UpdatedAt = DateTime.UtcNow;
 
                 unitOfWork.Users.Update(existingUser);
-                await unitOfWork.CommitTransactionAsync();
+                await unitOfWork.CommitTransactionAsync(cancellationToken);
                 return Result<bool>.Success(true);
             }
             catch (Exception ex)
             {
-                await unitOfWork.RollbackTransactionAsync();
+                if (unitOfWork.HasActiveTransaction)
+                {
+                    await unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+                }
                 return Result<bool>.Fail(ex.Message);
             }
         }
 
-        //=======================================================toggle user 
+
+        //public async Task<Result<UserDTO>> UpdateUserProfileAsync(int userId, UpdateProfileDTO updateProfileDTO)
+        //{
+
+        //}
 
 
-        //==============================================update user ==================
-        public async Task<Result<UserDTO>> UpdateUser(int userId, JsonPatchDocument<UpdateProfileDTO> patchDocument)
+
+        public async Task<Result<UserDTO>> CreateUserAsync(CreateUserDTO userDTO, CancellationToken cancellationToken)
         {
-            var existingUser = await userRepository.GetUserByIdAsync(userId);
-            if (existingUser == null || existingUser.UserProfile == null)
-            {
-                return Result<UserDTO>.Fail("User not  found");
-            }
-
-            var userProfileDto = mapper.Map<UpdateProfileDTO>(existingUser.UserProfile);
-
-            //validation patch operation
-            foreach (var operation in patchDocument.Operations)
-            {
-                if (operation.path.Equals("/SalutationID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
-                {
-                    int salutionId = Convert.ToInt32(operation.value);
-                    if (!await userRepository.IsSalutationExists(salutionId))
-                    {
-                        return Result<UserDTO>.Fail("Salution not exists.");
-                    }
-                }
-                if (operation.path.Equals("/GenderID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
-                {
-                    int genderID = Convert.ToInt32(operation.value);
-                    if (!await userRepository.IsGenderExists(genderID))
-                    {
-                        return Result<UserDTO>.Fail("Gender not exists.");
-                    }
-                }
-                if (operation.path.Equals("/MaritialStatusID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
-                {
-                    int maritialStatusID = Convert.ToInt32(operation.value);
-                    if (!await userRepository.IsMaritialStatusExists(maritialStatusID))
-                    {
-                        return Result<UserDTO>.Fail("MaritialStatus not exists.");
-                    }
-                }
-                if (operation.path.Equals("/BranchID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
-                {
-                    int branchID = Convert.ToInt32(operation.value);
-                    if (!await userRepository.IsBranchExists(branchID))
-                    {
-                        return Result<UserDTO>.Fail("Branch not exists.");
-                    }
-                }
-                if (operation.path.Equals("/DesignationID", StringComparison.OrdinalIgnoreCase) && operation.value != null)
-                {
-                    int designationID = Convert.ToInt32(operation.value);
-                    if (!await userRepository.IsDesignationExists(designationID))
-                    {
-                        return Result<UserDTO>.Fail("designation not exists.");
-                    }
-                }
-
-            }
-
-            //apply patch
-            patchDocument.ApplyTo(userProfileDto);
-
-            //validate dto
-            ValidationContext validationContext = new ValidationContext(userProfileDto);
-            List<ValidationResult> validationResults = new List<ValidationResult>();
-
-            if (!Validator.TryValidateObject(userProfileDto, validationContext, validationResults, true))
-            {
-                return Result<UserDTO>.Fail(string.Join(", ", validationResults.Select(x => x.ErrorMessage)));
-            }
-
-            //map back to entity
-
-            mapper.Map(userProfileDto, existingUser.UserProfile);
-
-            userRepository.UpdateUserAsync(existingUser);
-
-
-            //if (!isUpdate)
-            //{
-            //    return Result<UserDTO>.Fail("Failed to update user.");
-            //}
-
-            var userDto = mapper.Map<UserDTO>(existingUser);
-
-            return Result<UserDTO>.Success(userDto);
-
-        }
-
-
-        public async Task<Result<UserDTO>> UpdateUserProfileAsync(int userId, UpdateProfileDTO updateProfileDTO)
-        {
-            var curretUserId = currentUser.UserID;
-            var uploadedImagePath = string.Empty;
-
-            
-
-            var existingUser = await unitOfWork.Users.GetUserByIdAsync(userId);
-            if (existingUser == null || existingUser.UserProfile == null)
-            {
-                return Result<UserDTO>.Fail("User not found");
-            }
-
-            var userProfile = existingUser.UserProfile;
-
-            if (userId != updateProfileDTO.UserID)
-            {
-                return Result<UserDTO>.Fail("User ID mismatch");
-            }
-
-            //validation
-            if (updateProfileDTO.SalutationID > 0)
-            {
-                if (!await userRepository.IsSalutationExists(updateProfileDTO.SalutationID))
-                {
-                    return Result<UserDTO>.Fail("Salutation Doesn't exists");
-                }
-
-                userProfile.SalutationID = updateProfileDTO.SalutationID;
-            }
-
-            if (updateProfileDTO.GenderID > 0)
-            {
-                if (!await userRepository.IsGenderExists(updateProfileDTO.GenderID))
-                {
-                    return Result<UserDTO>.Fail("Gender Doesn't exists");
-                }
-                userProfile.GenderID = updateProfileDTO.GenderID;
-            }
-
-            if (updateProfileDTO.MaritialStatusID > 0)
-            {
-                if (!await userRepository.IsMaritialStatusExists(updateProfileDTO.MaritialStatusID))
-                {
-                    return Result<UserDTO>.Fail("Maritial Status Doesn't exists");
-                }
-                userProfile.MaritialStatusID = updateProfileDTO.MaritialStatusID;
-            }
-
-            if (updateProfileDTO.BranchID > 0)
-            {
-                if (!await userRepository.IsBranchExists(updateProfileDTO.BranchID))
-                {
-                    return Result<UserDTO>.Fail("Branch Doesn't exists");
-                }
-                userProfile.BranchID = updateProfileDTO.BranchID;
-            }
-
-            if (updateProfileDTO.DesignationID > 0)
-            {
-                if (!await userRepository.IsDesignationExists(updateProfileDTO.DesignationID))
-                {
-                    return Result<UserDTO>.Fail("Designation Doesn't exists");
-                }
-                userProfile.DesignationID = updateProfileDTO.DesignationID;
-            }
-
-            if (!string.IsNullOrEmpty(updateProfileDTO.FirstName) && userProfile.FirstName != updateProfileDTO.FirstName)
-            {
-                userProfile.FirstName = updateProfileDTO.FirstName;
-            }
-
-            if (!string.IsNullOrEmpty(updateProfileDTO.LastName) && userProfile.LastName != updateProfileDTO.LastName)
-            {
-                userProfile.LastName = updateProfileDTO.LastName;
-            }
-
-            if (updateProfileDTO.Dob < DateTime.UtcNow && userProfile.Dob != updateProfileDTO.Dob)
-            {
-                userProfile.Dob = updateProfileDTO.Dob;
-            }
-
-
-            if (!string.IsNullOrEmpty(updateProfileDTO.PhoneNumber) && userProfile.PhoneNumber != updateProfileDTO.PhoneNumber)
-            {
-                userProfile.PhoneNumber = updateProfileDTO.PhoneNumber;
-            }
-
-            if (!string.IsNullOrEmpty(updateProfileDTO.Nic) && userProfile.Nic != updateProfileDTO.Nic)
-            {
-                if (await userRepository.IsNicExists(updateProfileDTO.Nic))
-                {
-                    return Result<UserDTO>.Fail("NIC is already registered");
-                }
-                userProfile.Nic = updateProfileDTO.Nic;
-            }
-
-            if (updateProfileDTO.Address != null)
-            {
-                if (userProfile.Address == null)
-                {
-                    var address = mapper.Map<Address>(updateProfileDTO.Address);// Address එකක් නැත්නම් විතරක් අලුතෙන් Map කරලා Create වෙන්න දෙනවා
-                    userProfile.Address = address;
-                }
-                else
-                {
-                    mapper.Map(updateProfileDTO.Address, userProfile.Address);// කලින් Address එකක් තියෙනවා නම් AutoMapper එකෙන් ඒ තියෙන Object එකටම values Update කරනවා
-                }
-            }
-
-           
-
-
+            var user = mapper.Map<User>(userDTO);
+            var photopath = string.Empty;
             try
             {
+                await unitOfWork.BeginTransactionAsync(cancellationToken);
 
-                if (updateProfileDTO.ProfileImageUrl != null)
+                var hashPassword = BCrypt.Net.BCrypt.HashPassword(userDTO.Password);
+                user.Password = hashPassword;
+
+                if (userDTO.UserProfileDto.UserPhoto != null)
                 {
-                    uploadedImagePath = await fileStorageService.UploadProfileImageAsync(updateProfileDTO.ProfileImageUrl);
-                    userProfile.ProfileImageUrl = uploadedImagePath;
+                    photopath = await fileStorageService.UploadProfileImageAsync(userDTO.UserProfileDto.UserPhoto);
+                    user.UserProfile.ProfileImageUrl = photopath;
                 }
 
-                userProfile.UpdatedAt = DateTime.UtcNow;
-                userProfile.UpdatedBy = 1; // replace with current user id
-
-                await unitOfWork.BeginTransactionAsync();
-
-                unitOfWork.Users.UpdateUserProfile(userProfile);
-
-                await unitOfWork.CommitTransactionAsync();
-
-                var updatedUser = await userRepository.GetUserByIdAsync(userId);
-
-                var userdto = mapper.Map<UserDTO>(updatedUser);
-
-                return Result<UserDTO>.Success(userdto);
-
-
-            }
-            catch (Exception ex)
-            {
-
-                if (unitOfWork.HasActiveTransaction)
+                //add roles
+                foreach (var role in userDTO.roles.Distinct().ToList())
                 {
-                    await unitOfWork.RollbackTransactionAsync();
-                }
-                if (!string.IsNullOrEmpty(uploadedImagePath))
-                {
-                    await fileStorageService.DeleteProfileImageAsync(uploadedImagePath);
-                }
-                return Result<UserDTO>.Fail(ex.Message);
-            }
-        }
-
-
-
-        public async Task<Result<UserDTO>> CreateUser(CreateUserDTO userDTO)
-        {
-            string uploadedImagePath = string.Empty;
-            try
-            {
-                if (userDTO == null || userDTO.ProfileDTO == null)
-                {
-                    return Result<UserDTO>.Fail("Not valid dto");
-                }
-
-                ValidationContext validationContext = new ValidationContext(userDTO);
-                List<ValidationResult> validationResults = new List<ValidationResult>();
-
-                if (!Validator.TryValidateObject(userDTO, validationContext, validationResults, true))
-                {
-                    return Result<UserDTO>.Fail(string.Join(",", validationResults.Select(x => x.ErrorMessage)));
-                }
-
-                if (await userRepository.IsEmailExists(userDTO.Email))
-                {
-                    return Result<UserDTO>.Fail("Email aleady registerd.");
-                }
-
-                if (await userRepository.IsNicExists(userDTO.ProfileDTO.Nic))
-                {
-                    return Result<UserDTO>.Fail("Nic aleady registerd.");
-                }
-
-                if (!await userRepository.IsSalutationExists(userDTO.ProfileDTO.SalutationID))
-                {
-                    return Result<UserDTO>.Fail("Salutation doesn't exists");
-                }
-
-                if (!await userRepository.IsGenderExists(userDTO.ProfileDTO.GenderID))
-                {
-                    return Result<UserDTO>.Fail("Gender doesn't exists");
-                }
-
-                if (!await userRepository.IsBranchExists(userDTO.ProfileDTO.BranchID))
-                {
-                    return Result<UserDTO>.Fail("Branch doesn't exists");
-                }
-
-                if (!await userRepository.IsDesignationExists(userDTO.ProfileDTO.DesignationID))
-                {
-                    return Result<UserDTO>.Fail("Designation doesn't exists");
-                }
-
-
-
-                var user = mapper.Map<User>(userDTO);
-
-                if (userDTO.ProfileDTO.UserPhoto != null)
-                {
-                    uploadedImagePath = await fileStorageService.UploadProfileImageAsync(userDTO.ProfileDTO.UserPhoto);
-                    user.UserProfile.ProfileImageUrl = uploadedImagePath;
-                }
-                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(userDTO.Password);
-                user.Password = hashedPassword;
-                user.UserProfile.CreatedBy = 1;
-                user.UserProfile.CreatedAt = DateTime.UtcNow;
-
-                //map
-                await unitOfWork.BeginTransactionAsync();
-
-
-                unitOfWork.Users.CreateUser(user);
-
-                //need save profile
-
-                //asignRole
-
-                var distinctRoles = userDTO.roles.Distinct().ToList();
-                foreach (var role in distinctRoles)
-                {
-                    if (!await userRepository.IsRoleExists(role))
-                    {
-                        return Result<UserDTO>.Fail($"Role '{role}' does not exist.");
-                    }
-                }
-
-                foreach (var role in distinctRoles)
-                {
-
                     user.UserRoles.Add(new UserRole { RoleID = role });
-
                 }
 
+                user.UserProfile.CreatedBy = 1;
+                
 
-                await unitOfWork.CommitTransactionAsync();
+                unitOfWork.Users.Add(user);
+                await unitOfWork.CommitTransactionAsync(cancellationToken);
+                var createdUser = await userRepository.GetUserByIdAsync(user.ID,cancellationToken);
+                var dto = mapper.Map<UserDTO>(createdUser);
+                return Result<UserDTO>.Success(dto);
 
-                var newUser = await userRepository.GetUserByIdAsync(user.ID);
-
-                var createdUserDto = mapper.Map<UserDTO>(newUser);
-
-                return Result<UserDTO>.Success(createdUserDto);
             }
             catch (Exception ex)
             {
                 if (unitOfWork.HasActiveTransaction)
                 {
-                    await unitOfWork.RollbackTransactionAsync();
+                    await unitOfWork.RollbackTransactionAsync(CancellationToken.None);
                 }
-
-                if (!string.IsNullOrEmpty(uploadedImagePath))
+                if (!string.IsNullOrEmpty(photopath))
                 {
-                    await fileStorageService.DeleteProfileImageAsync(uploadedImagePath);
+                    await fileStorageService.DeleteProfileImageAsync(photopath);
                 }
                 return Result<UserDTO>.Fail(ex.Message);
-            }
 
+            }
         }
 
+        public async Task<Result<object>> DeleteUserAsync(int userId, CancellationToken cancellationToken)
+        {
+            var existingUser = await userRepository.GetByIdAsync(userId,cancellationToken);
 
+            if (existingUser == null)
+            {
+                return Result<object>.Fail("User not found");
+            }
+
+            userRepository.Delete(existingUser);
+            await userRepository.SaveAsync(cancellationToken);
+
+            return Result<object>.Success($"User : {existingUser.Email} deleted successfully.");
+        }
+
+        public async Task<Result<UserDTO>> UpdateUserProfileAsync(int userId, JsonPatchDocument<UpdateUserProfileDTO> jsonPatchDoc, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var existingUser = await unitOfWork.Users.GetUserByIdAsync(userId, cancellationToken);
+                if (existingUser == null || existingUser.UserProfile == null)
+                {
+                    return Result<UserDTO>.Fail("User not found");
+                }
+                //map
+                var updateDto = mapper.Map<UpdateUserProfileDTO>(existingUser.UserProfile);
+
+                //apply patch
+                jsonPatchDoc.ApplyTo(updateDto);
+
+                //validation
+                var validator = serviceProvider.GetRequiredService<IValidator<UpdateUserProfileDTO>>();
+                var validationResult = await validator.ValidateAsync(updateDto, cancellationToken);
+
+                if (!validationResult.IsValid)
+                {
+                    var errorResponse = validationResult.Errors.Select(e => new
+                    {
+                        Property = e.PropertyName,
+                        Error = e.ErrorMessage
+                    });
+
+                    return Result<UserDTO>.Fail(string.Join("/n", errorResponse));
+                }
+
+                //again map
+                mapper.Map(updateDto, existingUser.UserProfile);
+                await unitOfWork.BeginTransactionAsync(cancellationToken);
+                unitOfWork.Users.Update(existingUser);
+                await unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                var updatedUser = await userRepository.GetUserByIdAsync(existingUser.ID,cancellationToken);
+                var updatedUserDto = mapper.Map<UserDTO>(updatedUser);
+                return Result<UserDTO>.Success(updatedUserDto);
+
+            }
+            catch (Exception ex)
+            {
+
+                if (unitOfWork.HasActiveTransaction)
+                {
+                    await unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+                }
+
+                return Result<UserDTO>.Fail(ex.Message);
+            }
+        }
     }
 }

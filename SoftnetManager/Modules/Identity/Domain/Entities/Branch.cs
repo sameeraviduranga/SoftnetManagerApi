@@ -7,11 +7,9 @@ namespace SoftnetManager.Modules.Identity.Domain.Entities
     {
         [Key]
         public int ID { get; set; }
-        public int AddressID { get; set; }
-        public Address Address { get; set; } = null!;
         [Required]
         public string Name { get; set; } = string.Empty;
-
+        public Address Address { get; set; } = null!;//navigation property
         public ICollection<UserProfile> users { get; set; } = new List<UserProfile>();
 
     }

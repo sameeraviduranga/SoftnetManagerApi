@@ -12,8 +12,8 @@ using SoftnetManager.Modules.Shared.Database;
 namespace SoftnetManager.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260831153420_intialMigration")]
-    partial class intialMigration
+    [Migration("20260910073557_initialMigration")]
+    partial class initialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -33,6 +33,9 @@ namespace SoftnetManager.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
 
+                    b.Property<int?>("BranchID")
+                        .HasColumnType("int");
+
                     b.Property<string>("Line1")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -42,33 +45,38 @@ namespace SoftnetManager.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Line3")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("LocationStatus")
                         .HasColumnType("int");
 
-                    b.Property<int?>("UserID")
+                    b.Property<int?>("UserProfileID")
                         .HasColumnType("int");
 
-                    b.Property<int>("ZoneID")
+                    b.Property<int?>("ZoneID")
                         .HasColumnType("int");
 
                     b.HasKey("ID");
 
-                    b.HasIndex("UserID");
+                    b.HasIndex("BranchID")
+                        .IsUnique()
+                        .HasFilter("[BranchID] IS NOT NULL");
+
+                    b.HasIndex("UserProfileID")
+                        .IsUnique()
+                        .HasFilter("[UserProfileID] IS NOT NULL");
 
                     b.HasIndex("ZoneID");
 
-                    b.ToTable("Address");
+                    b.ToTable("Addresses");
 
                     b.HasData(
                         new
                         {
                             ID = 1,
-                            Line1 = "126 GANEGODA",
+                            BranchID = 1,
+                            Line1 = "200/A GANEGODA",
                             Line2 = "ARUKWATTA PADUKKA",
-                            Line3 = "",
                             LocationStatus = 2,
                             ZoneID = 10
                         });
@@ -82,16 +90,11 @@ namespace SoftnetManager.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
 
-                    b.Property<int>("AddressID")
-                        .HasColumnType("int");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("ID");
-
-                    b.HasIndex("AddressID");
 
                     b.ToTable("Branches");
 
@@ -99,7 +102,6 @@ namespace SoftnetManager.Migrations
                         new
                         {
                             ID = 1,
-                            AddressID = 1,
                             Name = "Padukka Branch"
                         });
                 });
@@ -520,7 +522,7 @@ namespace SoftnetManager.Migrations
 
                     b.HasIndex("PermissionId");
 
-                    b.ToTable("RolePermission");
+                    b.ToTable("RolePermissions");
                 });
 
             modelBuilder.Entity("SoftnetManager.Modules.Identity.Domain.Entities.Salutation", b =>
@@ -624,15 +626,10 @@ namespace SoftnetManager.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("UserProfileID")
-                        .HasColumnType("int");
-
                     b.HasKey("ID");
 
                     b.HasIndex("Email")
                         .IsUnique();
-
-                    b.HasIndex("UserProfileID");
 
                     b.HasIndex(new[] { "Email" }, "IX_User_Email")
                         .IsUnique();
@@ -647,9 +644,6 @@ namespace SoftnetManager.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
-
-                    b.Property<int?>("AddressID")
-                        .HasColumnType("int");
 
                     b.Property<int?>("BranchID")
                         .HasColumnType("int");
@@ -708,9 +702,10 @@ namespace SoftnetManager.Migrations
                     b.Property<int?>("UpdatedBy")
                         .HasColumnType("int");
 
-                    b.HasKey("ID");
+                    b.Property<int>("UserID")
+                        .HasColumnType("int");
 
-                    b.HasIndex("AddressID");
+                    b.HasKey("ID");
 
                     b.HasIndex("BranchID");
 
@@ -725,6 +720,9 @@ namespace SoftnetManager.Migrations
                         .HasFilter("[Nic] IS NOT NULL");
 
                     b.HasIndex("SalutationID");
+
+                    b.HasIndex("UserID")
+                        .IsUnique();
 
                     b.HasIndex(new[] { "Nic" }, "IX_User_Nic")
                         .IsUnique()
@@ -834,28 +832,25 @@ namespace SoftnetManager.Migrations
 
             modelBuilder.Entity("SoftnetManager.Modules.Identity.Domain.Entities.Address", b =>
                 {
-                    b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.User", null)
-                        .WithMany("Addresses")
-                        .HasForeignKey("UserID");
+                    b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.Branch", "Branch")
+                        .WithOne("Address")
+                        .HasForeignKey("SoftnetManager.Modules.Identity.Domain.Entities.Address", "BranchID")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.UserProfile", "UserProfile")
+                        .WithOne("Address")
+                        .HasForeignKey("SoftnetManager.Modules.Identity.Domain.Entities.Address", "UserProfileID")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.Zone", "Zone")
                         .WithMany()
-                        .HasForeignKey("ZoneID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ZoneID");
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("UserProfile");
 
                     b.Navigation("Zone");
-                });
-
-            modelBuilder.Entity("SoftnetManager.Modules.Identity.Domain.Entities.Branch", b =>
-                {
-                    b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.Address", "Address")
-                        .WithMany()
-                        .HasForeignKey("AddressID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Address");
                 });
 
             modelBuilder.Entity("SoftnetManager.Modules.Identity.Domain.Entities.City", b =>
@@ -907,28 +902,11 @@ namespace SoftnetManager.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("SoftnetManager.Modules.Identity.Domain.Entities.User", b =>
-                {
-                    b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.UserProfile", "UserProfile")
-                        .WithMany()
-                        .HasForeignKey("UserProfileID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("UserProfile");
-                });
-
             modelBuilder.Entity("SoftnetManager.Modules.Identity.Domain.Entities.UserProfile", b =>
                 {
-                    b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.Address", "Address")
-                        .WithMany()
-                        .HasForeignKey("AddressID")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.Branch", "Branch")
                         .WithMany("users")
-                        .HasForeignKey("BranchID")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("BranchID");
 
                     b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.Designation", "Designation")
                         .WithMany()
@@ -950,7 +928,11 @@ namespace SoftnetManager.Migrations
                         .HasForeignKey("SalutationID")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.Navigation("Address");
+                    b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.User", "User")
+                        .WithOne("UserProfile")
+                        .HasForeignKey("SoftnetManager.Modules.Identity.Domain.Entities.UserProfile", "UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Branch");
 
@@ -961,6 +943,8 @@ namespace SoftnetManager.Migrations
                     b.Navigation("MaritialStatus");
 
                     b.Navigation("Salutation");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SoftnetManager.Modules.Identity.Domain.Entities.UserRole", b =>
@@ -968,13 +952,13 @@ namespace SoftnetManager.Migrations
                     b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.Role", "Role")
                         .WithMany("UserRoles")
                         .HasForeignKey("RoleID")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("SoftnetManager.Modules.Identity.Domain.Entities.User", "User")
                         .WithMany("UserRoles")
                         .HasForeignKey("UserID")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Role");
@@ -995,6 +979,9 @@ namespace SoftnetManager.Migrations
 
             modelBuilder.Entity("SoftnetManager.Modules.Identity.Domain.Entities.Branch", b =>
                 {
+                    b.Navigation("Address")
+                        .IsRequired();
+
                     b.Navigation("users");
                 });
 
@@ -1027,11 +1014,17 @@ namespace SoftnetManager.Migrations
 
             modelBuilder.Entity("SoftnetManager.Modules.Identity.Domain.Entities.User", b =>
                 {
-                    b.Navigation("Addresses");
-
                     b.Navigation("RefreshTokens");
 
+                    b.Navigation("UserProfile")
+                        .IsRequired();
+
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("SoftnetManager.Modules.Identity.Domain.Entities.UserProfile", b =>
+                {
+                    b.Navigation("Address");
                 });
 #pragma warning restore 612, 618
         }

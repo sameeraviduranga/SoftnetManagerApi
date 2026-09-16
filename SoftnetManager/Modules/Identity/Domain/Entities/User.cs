@@ -8,9 +8,9 @@ namespace SoftnetManager.Modules.Identity.Domain.Entities
     {
         [Key]
         public int ID { get; set; }
-        public int UserProfileID { get; set; }
-        public UserProfile UserProfile { get; set; } = null!;
-
+        //public int UserProfileID { get; set; } if this add Userprofile is the main table
+        //public UserProfile UserProfile { get; set; } = null!;
+        // Navigation Property for UserProfile
         [Required(ErrorMessage = "Email is Required")]
         [EmailAddress(ErrorMessage = "Invalid Email Address")]
         [StringLength(100, ErrorMessage = "maximum email length is 100 charactors")]
@@ -19,6 +19,7 @@ namespace SoftnetManager.Modules.Identity.Domain.Entities
         [MinLength(6, ErrorMessage = "Password must be at least 6 characters long")]
         public string Password { get; set; } = string.Empty;
 
+        public UserProfile UserProfile { get; set; } = null!;
         public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     }

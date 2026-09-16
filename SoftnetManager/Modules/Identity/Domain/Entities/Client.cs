@@ -7,13 +7,13 @@ namespace SoftnetManager.Modules.Identity.Domain.Entities
         [Key]
         public int Id { get; set; }
         [Required]
-        public string ClientId { get; set; }
+        public string ClientId { get; set; } = string.Empty;
         [Required]
         [MaxLength(100)]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         [Required]
         [MaxLength(200)]
-        public string ClientURL { get; set; }
-        public ICollection<RefreshToken> RefreshTokens { get; set; }
+        public string ClientURL { get; set; } = string.Empty;
+        public ICollection<RefreshToken> RefreshTokens = new List<RefreshToken>();
     }
 }

@@ -8,6 +8,10 @@ namespace SoftnetManager.Modules.Identity.Domain.Entities
     {
         [Key]
         public int ID { get; set; }
+        public int? UserProfileID { get; set; }
+        public UserProfile? UserProfile { get; set; }
+        public int? BranchID { get; set; }
+        public Branch? Branch { get; set; }
         public int? ZoneID { get; set; }
         public Zone? Zone { get; set; }
         [Required]
